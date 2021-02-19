@@ -34,20 +34,20 @@ const TopBar = ({
   ...rest
 }) => {
   const classes = useStyles();
-  const [blocks, setBlocks] = useState([]);
+  const [head, setHead] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       const result = await axios(
-        'http://localhost:3030/beacon/blocks'
+        'http://localhost:3030/beacon/blocks/head'
       );
 
-      setBlocks(result.data);
+      setHead(result.data);
     };
 
-    fetchData();
+    const interval = setInterval(fetchData, 1000);
+    return () => clearInterval(interval);
   }, []);
-
 
   return (
     <AppBar
@@ -64,7 +64,7 @@ const TopBar = ({
             CURRENT SLOT
           </Typography>
           <Typography variant="h4" className={classes.info_value}>
-            {blocks.length === 0 ? 0 : blocks[blocks.length - 1].slot}
+            {head === null ? 0 : head.slot}
           </Typography>
         </Box>
         <Box className={classes.info}>

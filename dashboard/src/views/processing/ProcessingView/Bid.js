@@ -170,7 +170,7 @@ const Bid = ({ className, ...rest }) => {
                   value={slot}
                 />
                 <TextField
-                  label="fee"
+                  label="Fee (Gwei)"
                   margin="normal"
                   name="fee"
                   onChange={handleChangeFee}
