@@ -14,9 +14,16 @@ $ ./target/release/http_api
 ```
 
 ### Run Dashboard
-If you want to use the GUI to visualize and control the emulator, run the dashboard by entering the following commands:
+If you want to use the GUI to visualize and control the emulator, run the dashboard by entering the following commands.
+
+Install:
 ```
 $ cd dashboard
+$ npm install
+```
+
+Run:
+```
 $ npm start
 ```
 
