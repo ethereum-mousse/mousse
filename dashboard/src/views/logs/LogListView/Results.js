@@ -64,7 +64,7 @@ const Results = ({ className, logs, ...rest }) => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {logs.slice(0, limit).map((log) => (
+              {logs.slice(page * limit, (page + 1) * limit).map((log) => (
                 <TableRow
                   hover
                   key={log.log_id}
@@ -98,7 +98,7 @@ const Results = ({ className, logs, ...rest }) => {
         onChangeRowsPerPage={handleLimitChange}
         page={page}
         rowsPerPage={limit}
-        rowsPerPageOptions={[5, 10, 25]}
+        rowsPerPageOptions={[5, 10, 25, 50, 100]}
       />
     </Card>
   );
