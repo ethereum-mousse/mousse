@@ -1,0 +1,18 @@
+[package]
+name = "common"
+version = "0.1.0"
+authors = ["minami <minaminaoy@gmail.com>", "Ryuya Nakamura <nrryuya@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ethereum-types = "0.9.2"
+eth2_ssz = "0.1.2"
+eth2_ssz_derive = "0.1.0"
+# Use the older version (0.1.0) since the latest (0.2.0) depends on tree_hash (version 0.1.1), which is not published yet. 
+# Ref: https://github.com/sigp/lighthouse/blob/88e89f9ab21c3080b48bc840595617a4af3314b6/eth2/utils/ssz_types/Cargo.toml
+eth2_ssz_types = { git = "https://github.com/sigp/lighthouse", rev = "88e89f9ab21c3080b48bc840595617a4af3314b6" }
+serde = "1"
+serde_derive = "1.0"
+rand = "0.8.0"

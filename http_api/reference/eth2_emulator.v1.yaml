@@ -1,0 +1,459 @@
+openapi: 3.0.0
+info:
+  title: eth2_emulator
+  version: '1.0'
+  description: |-
+    API specification for the Eth2 Emulator of Mousse
+    Designed for rollups
+
+    Ref: [Phase 0 Beacon Node API](https://ethereum.github.io/eth2.0-APIs/)
+  contact:
+    name: Naoya Okanami
+    email: minaminaoy@gmail.com
+    url: 'https://twitter.com/vinami'
+  license:
+    name: Apache 2.0
+    url: 'https://www.apache.org/licenses/LICENSE-2.0'
+servers:
+  - url: 'http://localhost:3030'
+    description: ''
+paths:
+  /data_market/bid:
+    parameters: []
+    post:
+      summary: Publish Bid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+        '404':
+          description: Not Found
+      operationId: publishBid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Bid'
+            examples: {}
+        description: ''
+      description: |
+        Publish a bid. 
+        Assume the receiving node broadcast to the corresponding shard.
+      tags:
+        - DataMarket
+  '/shards/{shard}/headers/{slot}':
+    parameters:
+      - schema:
+          type: string
+        name: shard
+        in: path
+        required: true
+      - schema:
+          type: string
+        name: slot
+        in: path
+        required: true
+    get:
+      summary: Get Shard Header
+      tags:
+        - Shards
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ShardHeader'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+              examples:
+                example-1:
+                  value:
+                    code: '404'
+      operationId: getShardHeaderBySlot
+      description: ''
+  /beacon/blocks:
+    parameters: []
+    get:
+      summary: Get Beacon Block
+      tags:
+        - Beacon
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BeaconBlock'
+        '404':
+          description: Not Found
+      operationId: getBeaconBlockById
+  /beacon/finalized_blocks:
+    parameters: []
+    get:
+      summary: Get Finalized Block
+      tags:
+        - Beacon
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BeaconBlock'
+        '404':
+          description: Not Found
+      operationId: get-beacon-finalized_blocks-block_id
+      description: ''
+  /beacon/finalized_checkpoint:
+    get:
+      summary: Get Finalized Checkpoint
+      tags:
+        - Beacon
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Checkpoint'
+        '404':
+          description: Not Found
+      operationId: get-beacon-finalized_checkpoint
+  '/simulator/slot/process/{slot_num}':
+    parameters:
+      - schema:
+          type: string
+        name: slot_num
+        in: path
+        required: true
+    post:
+      summary: Process Slot
+      tags:
+        - Simulator
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not Found
+      operationId: post-simulator-slot-process-slot_num
+  '/simulator/slot/process_without_shard_data_inclusion/{slot_num}':
+    parameters:
+      - schema:
+          type: string
+        name: slot_num
+        in: path
+        required: true
+    post:
+      summary: Process Slot Without Shard Data Inclusion
+      tags:
+        - Simulator
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not Found
+      operationId: post-simulator-slot-process-without-shard-data-inclusion-slot_num
+  '/simulator/slot/process_without_shard_blob_proposal/{slot_num}':
+    parameters:
+      - schema:
+          type: string
+        name: slot_num
+        in: path
+        required: true
+    post:
+      summary: Process Slot Without Shard Blob Proposal
+      tags:
+        - Simulator
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not Found
+      operationId: post-simulator-slot-process-without-shard-blob-proposal-slot_num
+  '/simulator/slot/process_without_shard_header_inclusion/{slot_num}':
+    parameters:
+      - schema:
+          type: string
+        name: slot_num
+        in: path
+        required: true
+    post:
+      summary: Process Slot Without Shard Header Inclusion
+      tags:
+        - Simulator
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not Found
+      operationId: post-simulator-slot-process-without-shard-header-inclusion-slot_num
+  '/simulator/slot/process_without_shard_header_confirmation/{slot_num}':
+    parameters:
+      - schema:
+          type: string
+        name: slot_num
+        in: path
+        required: true
+    post:
+      summary: Process Slot Without Shard Header Confirmation
+      tags:
+        - Simulator
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not Found
+      operationId: post-simulator-slot-process-without-shard-header-confirmation-slot_num
+  '/simulator/slot/process_without_beacon_chain_finality/{slot_num}':
+    parameters:
+      - schema:
+          type: string
+        name: slot_num
+        in: path
+        required: true
+    post:
+      summary: Process Slot Without Beacon Chain Finality
+      tags:
+        - Simulator
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not Found
+      operationId: post-simulator-slot-process-without-beacon-chain-finality-slot_num
+  '/simulator/slot/process_without_beacon_block_proposal/{slot_num}':
+    parameters:
+      - schema:
+          type: string
+        name: slot_num
+        in: path
+        required: true
+    post:
+      summary: Process Slot Without Beacon Block Proposal
+      tags:
+        - Simulator
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not Found
+      operationId: post-simulator-slot-process-without-beacon-block-proposal-slot_num
+  '/simulator/slot/process_random/{slot_num}':
+    parameters:
+      - schema:
+          type: string
+        name: slot_num
+        in: path
+        required: true
+    post:
+      summary: Process Slot Random Failure
+      tags:
+        - Simulator
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not Found
+      operationId: post-simulator-slot-process-random-slot_num
+  /utils/data_commitment:
+    get:
+      summary: Calc Data Commitment From Base64 Encoded Text
+      tags:
+        - Utils
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataCommitment'
+        '404':
+          description: Not Found
+      operationId: get-utils-data_commitment
+      description: ''
+    parameters: []
+  /utils/request_logs:
+    get:
+      summary: Get Request Logs
+      tags:
+        - Utils
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RequestLog'
+        '404':
+          description: Not Found
+      operationId: get-utils-request_logs
+components:
+  schemas:
+    Bid:
+      title: Bid
+      type: object
+      x-examples: {}
+      properties:
+        message:
+          type: object
+          properties:
+            shard:
+              type: integer
+            slot:
+              type: integer
+            commitment:
+              $ref: '#/components/schemas/DataCommitment'
+            fee:
+              type: integer
+        signature:
+          type: string
+    SignedShardHeader:
+      title: SignedShardHeader
+      type: object
+      properties:
+        message:
+          $ref: '#/components/schemas/ShardHeader'
+        signature:
+          type: string
+    ShardHeader:
+      title: ShardHeader
+      type: object
+      properties:
+        slot:
+          type: integer
+        shard:
+          type: integer
+        commitment:
+          $ref: '#/components/schemas/DataCommitment'
+        degree_proof:
+          type: string
+    DataCommitment:
+      title: DataCommitment
+      type: object
+      properties:
+        point:
+          type: integer
+        length:
+          type: integer
+    FinalizedCommitment:
+      title: FinalizedCommitment
+      type: object
+      properties:
+        commitment:
+          $ref: '#/components/schemas/DataCommitment'
+        beacon_bock_header:
+          $ref: '#/components/schemas/BeaconBlockHeader'
+    BeaconBlockHeader:
+      title: BeaconBlockHeader
+      type: object
+      properties:
+        slot:
+          type: integer
+        parent_root:
+          type: string
+        state_root:
+          type: string
+    BeaconBlock:
+      title: BeaconBlock
+      type: object
+      properties:
+        slot:
+          type: integer
+        shard_headers:
+          type: array
+          items:
+            $ref: '#/components/schemas/SignedShardHeader'
+    PendingShardHeader:
+      title: PendingShardHeader
+      type: object
+      description: Omitted the votes field.
+      properties:
+        slot:
+          type: integer
+        shard:
+          type: integer
+        commitment:
+          $ref: '#/components/schemas/DataCommitment'
+        root:
+          type: string
+        confirmed:
+          type: boolean
+    LightClientUpdate:
+      title: LightClientUpdate
+      type: object
+      description: 'https://github.com/ethereum/eth2.0-specs/blob/cc80dd758cf5120b11af3747f5826de5cdcbd87c/specs/lightclient/sync-protocol.md#lightclientstore'
+      properties:
+        header:
+          $ref: '#/components/schemas/BeaconBlockHeader'
+        finality_header:
+          $ref: '#/components/schemas/BeaconBlockHeader'
+        finality_branch:
+          type: array
+          items:
+            type: string
+    BeaconState:
+      title: BeaconState
+      type: object
+      properties:
+        previous_epoch_pending_shard_headers:
+          type: string
+        current_epoch_pending_shard_headers:
+          type: string
+        grandparent_epoch_confirmed_commitments:
+          type: string
+        shard_gasprice:
+          type: integer
+    RequestLog:
+      title: RequestLog
+      type: object
+      x-tags:
+        - Utils
+      properties:
+        log_id:
+          type: integer
+        date:
+          type: string
+        endpoint:
+          type: string
+    Checkpoint:
+      title: Checkpoint
+      type: object
+      x-tags:
+        - Beacon
+      properties:
+        epoch:
+          type: integer
+        root:
+          type: integer
+tags:
+  - name: Beacon
+    description: Query to a virtual beacon node.
+  - name: Shards
+    description: Query to a virtual shard node.
+  - name: DataMarket
+    description: Query to a virtual data market node.
+  - name: Simulator
+    description: Query to a virtual eth2 simulator.
+  - name: Utils
+    description: Useful function endpoints
