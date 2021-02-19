@@ -17,7 +17,7 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-const CustomerListView = () => {
+const LogListView = () => {
   const classes = useStyles();
   const [logs, setLogs] = useState([]);
 
@@ -49,4 +49,4 @@ const CustomerListView = () => {
   );
 };
 
-export default CustomerListView;
+export default LogListView;
