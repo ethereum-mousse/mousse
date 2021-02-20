@@ -109,7 +109,7 @@ impl Simulator {
 
     /// Process to the given slot.
     fn process_slots(&mut self, slot: Slot) -> Result<(), String> {
-        if self.slot >= slot {
+        if self.slot > slot {
             return Err(format!(
                 "Simulator has already reached at slot {}. The current slot is {}.",
                 slot, self.slot
