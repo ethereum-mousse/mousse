@@ -105,7 +105,7 @@ impl SignedShardHeader {
 }
 
 /// "votes" field is omitted.
-#[derive(Hash, Clone)]
+#[derive(Hash, Clone, Deserialize, Serialize)]
 pub struct PendingShardHeader {
     pub slot: Slot,
     pub shard: Shard,
@@ -176,7 +176,7 @@ impl BeaconBlockHeader {
 }
 
 /// Only necessary fields are defined.
-#[derive(Clone)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct BeaconState {
     pub slot: Slot,
     pub finalized_checkpoint: Checkpoint,
