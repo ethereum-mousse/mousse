@@ -50,6 +50,7 @@ pub fn filters(
             simulator.clone(),
             request_logs.clone(),
         ))
+        .or(beacon_states(simulator.clone(), request_logs.clone()))
         .or(beacon_finalized_checkpoint(
             simulator.clone(),
             request_logs.clone(),
@@ -198,6 +199,30 @@ pub async fn get_beacon_finalized_blocks(
     let simulator = simulator.lock().await;
     let beacon_blocks = simulator.beacon_chain.get_finalized_blocks();
     Ok(warp::reply::json(&beacon_blocks))
+}
+
+/// GET /beacon/states
+pub fn beacon_states(
+    simulator: SharedSimulator,
+    request_logs: SharedRequestLogs,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::get()
+        .and(warp::path!("beacon" / "states"))
+        .and(with_simulator(simulator))
+        .and(with_request_logs(request_logs))
+        .and_then(get_beacon_states)
+        .with(cors())
+}
+
+pub async fn get_beacon_states(
+    simulator: SharedSimulator,
+    request_logs: SharedRequestLogs,
+) -> Result<impl warp::Reply, Infallible> {
+    let mut request_logs = request_logs.lock().await;
+    log(&mut request_logs, String::from("GET /beacon/states"));
+    let simulator = simulator.lock().await;
+    let beacon_states = simulator.beacon_chain.states.clone();
+    Ok(warp::reply::json(&beacon_states))
 }
 
 /// GET /beacon/finalized_checkpoint

@@ -308,6 +308,23 @@ paths:
         '404':
           description: Not Found
       operationId: get-utils-request_logs
+  /beacon/states:
+    get:
+      summary: Get Beacon States
+      tags:
+        - Beacon
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BeaconState'
+        '404':
+          description: Not Found
+      operationId: get-beacon-states
 components:
   schemas:
     Bid:
