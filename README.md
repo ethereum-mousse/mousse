@@ -13,6 +13,9 @@ $ cargo build --release
 $ ./target/release/http_api
 ```
 
+#### Options
+- `--port`: Port number to listen on. Default: 3030.
+
 ### Run Dashboard
 If you want to use the GUI to visualize and control the emulator, run the dashboard by entering the following commands.
 

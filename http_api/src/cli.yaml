@@ -1,0 +1,10 @@
+name: Mousse
+version: "0.1.0-beta"
+author: Naoya Okanami <minaminaoy@gmail.com>, Ryuya Nakamura <nrryuya@gmail.com>
+about: An Ethereum 2.0 Emulator for Local Testing of Eth2 Applications
+args:
+    - port:
+        about: "Port number to listen on. Default: 3030."
+        long: port 
+        value_name: PORT
+        takes_value: true
