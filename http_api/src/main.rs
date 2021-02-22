@@ -1,6 +1,7 @@
 #![allow(unused_must_use)]
 use base64;
 use chrono::prelude::*;
+use clap::{load_yaml, App};
 use eth2_simulator::simulator::Simulator;
 use pretty_env_logger;
 use serde_derive::{Deserialize, Serialize};
@@ -30,13 +31,22 @@ async fn main() {
     // Logging
     pretty_env_logger::init();
 
+    let yaml = load_yaml!("cli.yaml");
+    let matches = App::from(yaml).get_matches();
+
     // Run Eth2 simulator
     let simulator = Arc::new(Mutex::new(Simulator::new()));
     let request_logs = Arc::new(Mutex::new(Vec::<RequestLog>::new()));
 
     let routes = filters(simulator, request_logs);
 
-    warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+    let port = if let Some(port) = matches.value_of("port") {
+        port.parse().expect("END_SLOT must be a positive integer")
+    } else {
+        3030
+    };
+
+    warp::serve(routes).run(([127, 0, 0, 1], port)).await;
 }
 
 pub fn filters(
