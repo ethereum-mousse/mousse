@@ -181,7 +181,7 @@ pub struct BeaconState {
     pub slot: Slot,
     pub finalized_checkpoint: Checkpoint,
     /// The length is SHARD_NUM * SLOTS_PER_EPOCH.
-    /// Note: Assume every shard header gets confirmed within the epoch it is proposed.
+    pub previous_epoch_pending_shard_headers: VariableList<PendingShardHeader, typenum::U2048>,
     pub current_epoch_pending_shard_headers: VariableList<PendingShardHeader, typenum::U2048>,
 }
 
