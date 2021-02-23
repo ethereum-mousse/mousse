@@ -27,9 +27,10 @@ pub type Root = H256;
 pub type BLSSignature = [u8; BLS_SIGNATURE_BYTE_LEN];
 /// [u8; 48].
 pub type BLSCommitment = [u8; BLS_COMMITMENT_BYTE_LEN];
-/// Variable list of uint256. The length is MAX_SAMPLES_PER_BLOCK.
-/// TODO: Fix the length.
-pub type BlobData = VariableList<U256, typenum::U2048>;
+/// U256.
+/// Call this `FieldElement` instead of `BLSPoint`.
+/// Ref: https://github.com/ethereum/eth2.0-specs/pull/2172#discussion_r550884186
+pub type FieldElement = U256;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]
 pub struct Checkpoint {
@@ -246,7 +247,8 @@ impl BeaconState {
 pub struct ShardBlob {
     pub slot: Slot,
     pub shard: Shard,
-    pub data: BlobData,
+    // The length is POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOCK.
+    pub data: VariableList<FieldElement, typenum::U16384>,
 }
 
 pub fn compute_epoch_at_slot(slot: Slot) -> Epoch {
