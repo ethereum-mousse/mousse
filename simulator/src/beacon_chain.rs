@@ -133,7 +133,7 @@ impl BeaconChain {
     /// Create a new block and append to the main chain.
     fn append_new_block_to_chain(&mut self, shard_headers_included: bool, shard_headers_confirmed: bool) {
         // Shard shard headers to be included in the new beacon block.
-        let (mut included_previous_epoch_shard_headers, mut included_current_epoch_shard_headers) =
+        let (included_previous_epoch_shard_headers, mut included_current_epoch_shard_headers) =
             self.select_included_shard_headers(shard_headers_included);
 
         // Create the new beacon state.
