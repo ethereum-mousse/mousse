@@ -16,6 +16,7 @@ import {
   FormLabel,
 } from '@material-ui/core';
 import InsertDriveFile from '@material-ui/icons/InsertDriveFile';
+import bytesToHex from 'src/utils/bytesToHex';
 
 const useStyles = makeStyles((theme) => ({
   root: {},
@@ -94,7 +95,7 @@ const Bid = ({ className, ...rest }) => {
     })
       .then(response => response.json())
       .then(commitment => {
-        setPoint(commitment.point);
+        setPoint(bytesToHex(commitment.point));
         setLength(commitment.length);
       })
       .catch(error => console.error("Error:", error));
