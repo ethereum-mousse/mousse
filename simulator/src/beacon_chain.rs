@@ -132,35 +132,9 @@ impl BeaconChain {
 
     /// Create a new block and append to the main chain.
     fn append_new_block_to_chain(&mut self, shard_headers_included: bool, shard_headers_confirmed: bool) {
-        // Shard headers to be included in the current slot's beacon block.
-        // TODO: Curve this out to another method.
-        let mut included_previous_epoch_shard_headers: Vec<SignedShardHeader> = Vec::new();
-        let mut included_current_epoch_shard_headers: Vec<SignedShardHeader> = Vec::new();
-        if shard_headers_included {
-            // If the number of headers in the pool exeeds the limit, select from the older headers.
-            if self.previous_epoch_shard_header_pool.len() > MAX_SHARD_HEADERS_PER_BLOCK {
-                // included_previous_epoch_shard_headers = self.previous_epoch_shard_header_pool[..MAX_SHARD_HEADERS_PER_BLOCK].to_vec();
-                // self.previous_epoch_shard_header_pool = self.previous_epoch_shard_header_pool[MAX_SHARD_HEADERS_PER_BLOCK..].to_vec();
-
-                // Keep the fresher headers that are not selected in the pool.
-                included_previous_epoch_shard_headers = self.previous_epoch_shard_header_pool.drain(..MAX_SHARD_HEADERS_PER_BLOCK).collect();
-            } else {
-                included_previous_epoch_shard_headers = self.previous_epoch_shard_header_pool.clone();
-                let max_current_epoch_shard_headers = MAX_SHARD_HEADERS_PER_BLOCK - self.previous_epoch_shard_header_pool.len();
-                self.previous_epoch_shard_header_pool.clear();
-                if self.current_epoch_shard_header_pool.len() > max_current_epoch_shard_headers {
-                    // included_current_epoch_shard_headers = self.current_epoch_shard_header_pool[..max_current_epoch_shard_headers].to_vec();
-                    // self.current_epoch_shard_header_pool = self.current_epoch_shard_header_pool[max_current_epoch_shard_headers..].to_vec();
-
-                    // Keep the fresher headers that are not selected in the pool.
-                    included_current_epoch_shard_headers = self.current_epoch_shard_header_pool.drain(..max_current_epoch_shard_headers).collect();
-                } else {
-                    included_current_epoch_shard_headers = self.current_epoch_shard_header_pool.clone();
-                    // All the published headers are included in the new beacon block.
-                    self.current_epoch_shard_header_pool.clear();    
-                }
-            }
-        }
+        // Shard shard headers to be included in the new beacon block.
+        let (mut included_previous_epoch_shard_headers, mut included_current_epoch_shard_headers) =
+            self.select_included_shard_headers(shard_headers_included);
 
         // Create the new beacon state.
         let state = self.create_new_state(&included_previous_epoch_shard_headers, &included_current_epoch_shard_headers, shard_headers_confirmed);
@@ -182,6 +156,7 @@ impl BeaconChain {
         };
 
         // Define checkpoints if necessary.
+        // Define the same block for multiple consecutive epochs without beacon block proposal.
         // Ref: https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/fork-choice.md#get_ancestor
         while self.is_checkpoint_missing() {
             self.checkpoints.push(Checkpoint {
@@ -192,6 +167,32 @@ impl BeaconChain {
         assert!(self.checkpoints.len() == compute_epoch_at_slot(self.slot) as usize + 1);
 
         self.blocks.push(new_block);
+    }
+
+    /// Shard shard headers to be included in the current slot's beacon block.
+    fn select_included_shard_headers(&mut self, shard_headers_included: bool) -> (Vec<SignedShardHeader>, Vec<SignedShardHeader>) {
+        let mut included_previous_epoch_shard_headers: Vec<SignedShardHeader> = Vec::new();
+        let mut included_current_epoch_shard_headers: Vec<SignedShardHeader> = Vec::new();
+        if shard_headers_included {
+            // If the number of headers in the pool exceeds the limit, select from the older headers.
+            if self.previous_epoch_shard_header_pool.len() > MAX_SHARD_HEADERS_PER_BLOCK {
+                // Keep the fresher headers that are not selected in the pool.
+                included_previous_epoch_shard_headers = self.previous_epoch_shard_header_pool.drain(..MAX_SHARD_HEADERS_PER_BLOCK).collect();
+            } else {
+                included_previous_epoch_shard_headers = self.previous_epoch_shard_header_pool.clone();
+                let max_current_epoch_shard_headers = MAX_SHARD_HEADERS_PER_BLOCK - self.previous_epoch_shard_header_pool.len();
+                self.previous_epoch_shard_header_pool.clear();
+                if self.current_epoch_shard_header_pool.len() > max_current_epoch_shard_headers {
+                    // Keep the fresher headers that are not selected in the pool.
+                    included_current_epoch_shard_headers = self.current_epoch_shard_header_pool.drain(..max_current_epoch_shard_headers).collect();
+                } else {
+                    included_current_epoch_shard_headers = self.current_epoch_shard_header_pool.clone();
+                    // All the published headers are included in the new beacon block.
+                    self.current_epoch_shard_header_pool.clear();    
+                }
+            }
+        }
+        return (included_previous_epoch_shard_headers, included_current_epoch_shard_headers)
     }
 
     /// Progress consensus.
@@ -207,12 +208,12 @@ impl BeaconChain {
         }
     }
 
+    /// Whether or not it is the first time to propsoe a beacon block.
     fn is_first_block_proposal(&self) -> bool {
-        // Whether or not it is the first time to propsoe a beacon block.
         self.blocks.is_empty()
     }
 
-    // Whether or not checkpoints are not enough.
+    /// Whether or not checkpoints are not enough.
     fn is_checkpoint_missing(&self) -> bool {        
         self.checkpoints.len() < compute_epoch_at_slot(self.slot) as usize + 1
     }
