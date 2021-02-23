@@ -100,8 +100,6 @@ impl BeaconChain {
     // Process at the end of an epoch.
     fn process_epoch(&mut self){
         self.update_shard_gasprice();
-        // TODO: Add a test to verify the epochs of the pending shard headers.
-        // このテストを入れ忘れていたので、修正前でテスト通っていた。
         // Inherit the current pending shard headers to the next epoch.
         self.state.previous_epoch_pending_shard_headers = self.state.current_epoch_pending_shard_headers.clone();
         // Reset the current pending shard headers.
