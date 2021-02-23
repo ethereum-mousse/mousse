@@ -24,6 +24,7 @@ mod tests {
         let state1 = BeaconState {
             slot: 0,
             finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
+            previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
             current_epoch_pending_shard_headers: VariableList::from(
                 signed_headers[..SHARD_NUM].iter().map(
                     |signed_header| PendingShardHeader::from_signed_shard_header(signed_header)
@@ -39,6 +40,7 @@ mod tests {
         let state2 = BeaconState {
             slot: 1,
             finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
+            previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
             current_epoch_pending_shard_headers: VariableList::from(
                 signed_headers[SHARD_NUM..].iter().map(
                     |signed_header| PendingShardHeader::from_signed_shard_header(signed_header)
@@ -62,6 +64,7 @@ mod tests {
         let another_state2 = BeaconState {
             slot: 1,
             finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
+            previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
             current_epoch_pending_shard_headers: VariableList::from(
                 signed_headers[SHARD_NUM..].iter().map(
                     |signed_header| PendingShardHeader::from_signed_shard_header(signed_header)
