@@ -134,7 +134,7 @@ pub struct BeaconBlock {
     pub slot: Slot,
     pub parent_root: Root,
     pub state_root: Root,
-    /// The length is MAX_SHARD_HEADERS_PER_BLOCK (= SHARD_NUM * MAX_SHARD_HEADERS_PER_SHARD).
+    /// The length is MAX_SHARD_HEADERS (= SHARD_NUM * MAX_SHARD_HEADERS_PER_SHARD).
     pub shard_headers: VariableList<SignedShardHeader, typenum::U256>,
 }
 
@@ -180,9 +180,9 @@ impl BeaconBlockHeader {
 pub struct BeaconState {
     pub slot: Slot,
     pub finalized_checkpoint: Checkpoint,
-    /// The length is SHARD_NUM * SLOTS_PER_EPOCH.
-    pub previous_epoch_pending_shard_headers: VariableList<PendingShardHeader, typenum::U2048>,
-    pub current_epoch_pending_shard_headers: VariableList<PendingShardHeader, typenum::U2048>,
+    /// The length is MAX_SHARD_HEADERS * SLOTS_PER_EPOCH.
+    pub previous_epoch_pending_shard_headers: VariableList<PendingShardHeader, typenum::U8192>,
+    pub current_epoch_pending_shard_headers: VariableList<PendingShardHeader, typenum::U8192>,
 }
 
 /// Implement `Hash` manually to handle `VariableList`.
