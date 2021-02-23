@@ -434,7 +434,6 @@ mod tests {
         assert_eq!(simulator.beacon_chain.checkpoints[catastrophic_epoch as usize].root,
             simulator.beacon_chain.checkpoints[catastrophic_epoch as usize + 1].root);
 
-
         // Invariants about pending shard headers.
         for state in simulator.beacon_chain.states.iter() {
             for header in state.previous_epoch_pending_shard_headers.iter() {
