@@ -16,6 +16,8 @@ import {
   FormLabel,
 } from '@material-ui/core';
 import InsertDriveFile from '@material-ui/icons/InsertDriveFile';
+import bytesToHex from 'src/utils/bytesToHex';
+import hexToBytes from 'src/utils/hexToBytes';
 
 const useStyles = makeStyles((theme) => ({
   root: {},
@@ -55,7 +57,7 @@ const Bid = ({ className, ...rest }) => {
     setSlot(event.target.value);
   };
 
-  const [point, setPoint] = useState(0);
+  const [point, setPoint] = useState("0x0");
   const handleChangePoint = (event) => {
     setPoint(event.target.value);
   };
@@ -94,7 +96,7 @@ const Bid = ({ className, ...rest }) => {
     })
       .then(response => response.json())
       .then(commitment => {
-        setPoint(commitment.point);
+        setPoint("0x" + bytesToHex(commitment.point));
         setLength(commitment.length);
       })
       .catch(error => console.error("Error:", error));
@@ -103,15 +105,18 @@ const Bid = ({ className, ...rest }) => {
   const handleSubmit = event => {
     event.preventDefault();
 
+    let point_raw = hexToBytes(point.slice(2));
+
     let body = JSON.stringify({
       shard: parseInt(shard),
       slot: parseInt(slot),
       commitment: {
-        point: parseInt(point),
+        point: hexToBytes(point_raw),
         length: parseInt(length),
       },
       fee: parseInt(fee)
     });
+    console.log(body);
 
     let endpoint = "http://localhost:3030/data_market/bid";
     fetch(endpoint, {
@@ -188,12 +193,12 @@ const Bid = ({ className, ...rest }) => {
                 <FormLabel component="legend">Commitment</FormLabel>
                 <TextField
                   fullWidth
-                  label="Point"
+                  label="Point (hex)"
                   margin="normal"
                   name="point"
                   onChange={handleChangePoint}
                   variant="outlined"
-                  placeholder="0"
+                  placeholder="0x0"
                   value={point}
                 />
                 <TextField

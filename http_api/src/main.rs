@@ -29,6 +29,7 @@ pub type SharedRequestLogs = Arc<Mutex<Vec<RequestLog>>>;
 #[tokio::main]
 async fn main() {
     // Logging
+    // $ RUST_LOG=trace cargo run
     pretty_env_logger::init();
 
     let yaml = load_yaml!("cli.yaml");

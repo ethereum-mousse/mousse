@@ -175,12 +175,12 @@ impl BeaconChain {
         let mut included_current_epoch_shard_headers: Vec<SignedShardHeader> = Vec::new();
         if shard_headers_included {
             // If the number of headers in the pool exceeds the limit, select from the older headers.
-            if self.previous_epoch_shard_header_pool.len() > MAX_SHARD_HEADERS_PER_BLOCK {
+            if self.previous_epoch_shard_header_pool.len() > MAX_SHARD_HEADERS {
                 // Keep the fresher headers that are not selected in the pool.
-                included_previous_epoch_shard_headers = self.previous_epoch_shard_header_pool.drain(..MAX_SHARD_HEADERS_PER_BLOCK).collect();
+                included_previous_epoch_shard_headers = self.previous_epoch_shard_header_pool.drain(..MAX_SHARD_HEADERS).collect();
             } else {
                 included_previous_epoch_shard_headers = self.previous_epoch_shard_header_pool.clone();
-                let max_current_epoch_shard_headers = MAX_SHARD_HEADERS_PER_BLOCK - self.previous_epoch_shard_header_pool.len();
+                let max_current_epoch_shard_headers = MAX_SHARD_HEADERS - self.previous_epoch_shard_header_pool.len();
                 self.previous_epoch_shard_header_pool.clear();
                 if self.current_epoch_shard_header_pool.len() > max_current_epoch_shard_headers {
                     // Keep the fresher headers that are not selected in the pool.

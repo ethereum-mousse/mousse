@@ -4,6 +4,8 @@
 pub mod eth2_types;
 pub mod eth2_config;
 pub mod bid;
+#[macro_use]
+extern crate serde_big_array;
 
 #[cfg(test)]
 mod tests {
@@ -84,7 +86,7 @@ mod tests {
 
 
     #[test]
-    fn dummy_from_bytes() {
+    fn dummy_commitment() {
         check_dummy_from_string(String::from(""));
         check_dummy_from_string(String::from("hello"));
         compare_dummy_from_string(String::from("sharding"), String::from("sharding"));
@@ -95,7 +97,6 @@ mod tests {
     fn check_dummy_from_string(s: String) {
         let bytes = s.clone().into_bytes();
         let commitment = DataCommitment::dummy_from_bytes(&bytes);
-        assert_eq!(calculate_hash(&bytes), commitment.point);
         assert_eq!((s.len() as f64 / BYTES_PER_POINT as f64).ceil() as u64, commitment.length);
     }
 
@@ -112,5 +113,18 @@ mod tests {
         } else {
             assert_ne!(commitment1, commitment2);
         }
+    }
+
+    #[test]
+    fn dummy_signed_shard_header() {
+        let header = ShardHeader {
+            slot: 0,
+            shard: 0,
+            commitment: generate_dummy_from_string(&String::from("Ethreum")),
+        };
+        let signed_header1 = SignedShardHeader::dummy_from_header(header.clone());
+        let signed_header2 = SignedShardHeader::dummy_from_header(header);
+        // Dummy signature is deterministic.
+        assert_eq!(signed_header1, signed_header2);
     }
 }
