@@ -8,6 +8,8 @@ pub use ssz_types::{typenum, VariableList};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
+big_array! { BigArray; }
+
 /// u64.
 pub type Slot = u64;
 /// u64.
@@ -18,15 +20,15 @@ pub type Shard = u64;
 pub type Gwei = u64;
 /// H256.
 pub type Root = H256;
-/// [u8; 32].
-/// TODO: This should be bytes96. We leave this fix to avoid SSZ implementation.
-/// Ref: https://github.com/sigp/lighthouse/blob/v1.0.6/crypto/bls/src/generic_signature.rs#L31
-pub type BLSSignature = [u8; 32];
+/// [u8; 96].
+const BLS_SIGNATURE_BYTE_LEN: usize = 96;
+pub type BLSSignature = [u8; BLS_SIGNATURE_BYTE_LEN];
 /// u64.
 /// TODO: This should be bytes48. We leave this fix to avoid SSZ implementation.
 /// Ref: https://github.com/sigp/lighthouse/blob/v1.0.6/crypto/bls/src/generic_public_key_bytes.rs#L22
 pub type BLSCommitment = u64;
 /// Variable list of uint256. The length is MAX_SAMPLES_PER_BLOCK.
+/// TODO: Fix the length.
 pub type BlobData = VariableList<U256, typenum::U2048>;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]
@@ -80,7 +82,7 @@ fn root<T: Hash>(t: &T) -> Root {
     H256::from_slice(hash)
 }
 
-/// "degree_proof" field is omitted.
+/// `degree_proof` field is omitted.
 #[derive(Hash, Clone, Deserialize, Serialize)]
 pub struct ShardHeader {
     pub slot: Slot,
@@ -91,20 +93,27 @@ pub struct ShardHeader {
 #[derive(Hash, Clone, Deserialize, Serialize)]
 pub struct SignedShardHeader {
     pub message: ShardHeader,
+    #[serde(with = "BigArray")]
     pub signature: BLSSignature,
 }
 
 impl SignedShardHeader {
+    /// Generate a signed shard header with a dummy signature.
+    /// TODO: Use the real BLS signature.
     pub fn dummy_from_header(header: ShardHeader) -> Self {
+        let mut rng = rand::thread_rng();
+        let mut signature: BLSSignature = [0; BLS_SIGNATURE_BYTE_LEN];
+        for i in 0..BLS_SIGNATURE_BYTE_LEN {
+            signature[i] = rng.gen();
+        }
         Self {
             message: header,
-            // TODO: Use the real BLS signature.
-            signature: rand::thread_rng().gen::<[u8; 32]>(),
+            signature: signature,
         }
     }
 }
 
-/// "votes" field is omitted.
+/// `votes` field is omitted.
 #[derive(Hash, Clone, Deserialize, Serialize)]
 pub struct PendingShardHeader {
     pub slot: Slot,

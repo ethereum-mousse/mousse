@@ -290,6 +290,7 @@ dependencies = [
  "ethereum-types 0.9.2",
  "rand 0.8.1",
  "serde",
+ "serde-big-array",
  "serde_derive",
 ]
 
@@ -1760,6 +1761,16 @@ name = "serde"
 version = "1.0.118"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06c64263859d87aa2eb554587e2d23183398d617427327cf2b3d0ed8c69e4800"
+
+[[package]]
+name = "serde-big-array"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14f791855a30ea300749cd42f29761707665a2166c8550be67adbfeb78c62195"
+dependencies = [
+ "serde",
+ "serde_derive",
+]
 
 [[package]]
 name = "serde_cbor"

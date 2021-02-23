@@ -4,6 +4,8 @@
 pub mod eth2_types;
 pub mod eth2_config;
 pub mod bid;
+#[macro_use]
+extern crate serde_big_array;
 
 #[cfg(test)]
 mod tests {

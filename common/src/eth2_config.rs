@@ -8,6 +8,7 @@ pub const SLOTS_PER_EPOCH: u64 = 32;
 pub const SHARD_NUM: usize = 64;
 
 /// Ref: https://github.com/ethereum/eth2.0-specs/blob/074c09c018e77db8a8c88d9fa88f097fd646d5eb/specs/phase1/beacon-chain.md
+/// TODO: Move this to eth2_types.
 pub const BYTES_PER_POINT :usize = 31;
 pub const POINTS_PER_SAMPLE :usize = 8; // = 2 ** 3, 31 * 8 = 248 bytes
 pub const MAX_SAMPLES_PER_BLOCK	:usize = 2048; // = 2 ** 11, 248 * 2,048 = 507,904 bytes
