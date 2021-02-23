@@ -2,7 +2,6 @@
 //! Ref: https://github.com/ethereum/eth2.0-specs/blob/849837a07d1e3dbf7c75d71b14034c10315f6341/specs/phase1/beacon-chain.md
 use crate::eth2_config::*;
 pub use ethereum_types::{H256, U256};
-use rand::Rng;
 use serde_derive::{Deserialize, Serialize};
 pub use ssz_types::{typenum, VariableList};
 use std::collections::hash_map::DefaultHasher;
@@ -84,14 +83,14 @@ fn root<T: Hash>(t: &T) -> Root {
 }
 
 /// `degree_proof` field is omitted.
-#[derive(Hash, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]
 pub struct ShardHeader {
     pub slot: Slot,
     pub shard: Shard,
     pub commitment: DataCommitment,
 }
 
-#[derive(Hash, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]
 pub struct SignedShardHeader {
     pub message: ShardHeader,
     #[serde(with = "BigArray")]
@@ -100,12 +99,19 @@ pub struct SignedShardHeader {
 
 impl SignedShardHeader {
     /// Generate a signed shard header with a dummy signature.
+    /// The dummy signature is based on the header's hash, so deterministic.
     /// TODO: Use the real BLS signature.
     pub fn dummy_from_header(header: ShardHeader) -> Self {
-        let mut rng = rand::thread_rng();
-        let mut signature: BLSSignature = [0; BLS_SIGNATURE_BYTE_LEN];
-        for i in 0..BLS_SIGNATURE_BYTE_LEN {
-            signature[i] = rng.gen();
+        let mut hash: u64 = calculate_hash(&header);
+        let mut dummy_sig: Vec<u8> = Vec::new();
+        for _ in 0..BLS_SIGNATURE_BYTE_LEN / 8 {
+            hash = calculate_hash(&hash);
+            dummy_sig.extend_from_slice(&u64::to_le_bytes(hash));
+        }
+        assert_eq!(BLS_SIGNATURE_BYTE_LEN, dummy_sig.len());
+        let mut signature: [u8; BLS_SIGNATURE_BYTE_LEN] = [0; BLS_SIGNATURE_BYTE_LEN];
+        for (i, v) in dummy_sig.iter().enumerate() {
+            signature[i] = *v;
         }
         Self {
             message: header,
@@ -115,7 +121,7 @@ impl SignedShardHeader {
 }
 
 /// `votes` field is omitted.
-#[derive(Hash, Clone, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]
 pub struct PendingShardHeader {
     pub slot: Slot,
     pub shard: Shard,

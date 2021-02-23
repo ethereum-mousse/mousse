@@ -86,7 +86,7 @@ mod tests {
 
 
     #[test]
-    fn dummy_from_bytes() {
+    fn dummy_commitment() {
         check_dummy_from_string(String::from(""));
         check_dummy_from_string(String::from("hello"));
         compare_dummy_from_string(String::from("sharding"), String::from("sharding"));
@@ -114,5 +114,18 @@ mod tests {
         } else {
             assert_ne!(commitment1, commitment2);
         }
+    }
+
+    #[test]
+    fn dummy_signed_shard_header() {
+        let header = ShardHeader {
+            slot: 0,
+            shard: 0,
+            commitment: generate_dummy_from_string(&String::from("Ethreum")),
+        };
+        let signed_header1 = SignedShardHeader::dummy_from_header(header.clone());
+        let signed_header2 = SignedShardHeader::dummy_from_header(header);
+        // Dummy signature is deterministic.
+        assert_eq!(signed_header1, signed_header2);
     }
 }
