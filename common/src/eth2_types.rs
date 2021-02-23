@@ -70,16 +70,17 @@ pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
     s.finish()
 }
 
-// TODO: Replace this with SSZ root.
+/// Calculate dummy 32 bytes hash root.
+/// TODO: Replace this with SSZ root.
 fn root<T: Hash>(t: &T) -> Root {
-    let hash: &mut Vec<u8> = &mut u64::to_le_bytes(calculate_hash(t)).to_vec();
-    let hash2: &[u8; 8] = &u64::to_le_bytes(calculate_hash(hash));
-    let hash3: &[u8; 8] = &u64::to_le_bytes(calculate_hash(hash2));
-    let hash4: &[u8; 8] = &u64::to_le_bytes(calculate_hash(hash3));
-    hash.extend_from_slice(hash2);
-    hash.extend_from_slice(hash3);
-    hash.extend_from_slice(hash4);
-    H256::from_slice(hash)
+    let mut hash: u64 = calculate_hash(t);
+    let mut root: Vec<u8> = Vec::new();
+    for _ in 0..4 {
+        hash = calculate_hash(&hash);
+        root.extend_from_slice(&u64::to_le_bytes(hash));
+    }
+    assert_eq!(32, root.len());
+    H256::from_slice(&root)
 }
 
 /// `degree_proof` field is omitted.
