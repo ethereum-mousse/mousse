@@ -97,7 +97,6 @@ mod tests {
     fn check_dummy_from_string(s: String) {
         let bytes = s.clone().into_bytes();
         let commitment = DataCommitment::dummy_from_bytes(&bytes);
-        assert_eq!(calculate_hash(&bytes), commitment.point);
         assert_eq!((s.len() as f64 / BYTES_PER_POINT as f64).ceil() as u64, commitment.length);
     }
 

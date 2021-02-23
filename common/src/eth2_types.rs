@@ -9,6 +9,10 @@ use std::hash::{Hash, Hasher};
 
 big_array! { BigArray; }
 
+const BLS_SIGNATURE_BYTE_LEN: usize = 96;
+const BLS_COMMITMENT_BYTE_LEN: usize = 48;
+pub const BYTES_PER_POINT: usize = 31;
+
 /// u64.
 pub type Slot = u64;
 /// u64.
@@ -20,13 +24,9 @@ pub type Gwei = u64;
 /// H256.
 pub type Root = H256;
 /// [u8; 96].
-const BLS_SIGNATURE_BYTE_LEN: usize = 96;
 pub type BLSSignature = [u8; BLS_SIGNATURE_BYTE_LEN];
-/// u64.
-/// TODO: This should be bytes48. We leave this fix to avoid SSZ implementation.
-/// Ref: https://github.com/sigp/lighthouse/blob/v1.0.6/crypto/bls/src/generic_public_key_bytes.rs#L22
-pub type BLSCommitment = u64;
-pub const BYTES_PER_POINT: usize = 31;
+/// [u8; 48].
+pub type BLSCommitment = [u8; BLS_COMMITMENT_BYTE_LEN];
 /// Variable list of uint256. The length is MAX_SAMPLES_PER_BLOCK.
 /// TODO: Fix the length.
 pub type BlobData = VariableList<U256, typenum::U2048>;
@@ -46,17 +46,40 @@ impl Checkpoint {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]
 pub struct DataCommitment {
+    #[serde(with = "BigArray")]
     pub point: BLSCommitment,
     pub length: u64,
 }
 
-impl DataCommitment {
-    pub fn dummy_from_bytes(bytes: &Vec<u8>) -> Self {
+impl Default for DataCommitment {
+    fn default() -> Self {
         Self {
-            // TODO: Use the real KZG commitment.
-            point: calculate_hash(bytes),
+            point: [0; BLS_COMMITMENT_BYTE_LEN],
+            length: 0,
+        }
+    }
+}
+
+impl DataCommitment {
+    /// Generate a dummy commitment based on the data's hash.
+    /// TODO: Use the real KZG commitment.
+    pub fn dummy_from_bytes(bytes: &Vec<u8>) -> Self {
+        let mut hash: u64 = calculate_hash(bytes);
+        let mut dummy_sig: Vec<u8> = Vec::new();
+        for _ in 0..BLS_COMMITMENT_BYTE_LEN / 8 {
+            hash = calculate_hash(&hash);
+            dummy_sig.extend_from_slice(&u64::to_le_bytes(hash));
+        }
+        assert_eq!(BLS_COMMITMENT_BYTE_LEN, dummy_sig.len());
+        let mut point: [u8; BLS_COMMITMENT_BYTE_LEN] = [0; BLS_COMMITMENT_BYTE_LEN];
+        for (i, v) in dummy_sig.iter().enumerate() {
+            point[i] = *v;
+        }
+
+        Self {
+            point: point,
             // Each point is 31 bytes.
             length: (bytes.len() as f64 / BYTES_PER_POINT as f64).ceil() as u64,
         }
