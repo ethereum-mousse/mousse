@@ -20,8 +20,7 @@ import {
 import IconButton from '@material-ui/core/IconButton';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
 import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
-
-// import getInitials from 'src/utils/getInitials';
+import bytesToHex from 'src/utils/bytesToHex';
 
 const useStyles = makeStyles((theme) => ({
   root: {},
@@ -65,12 +64,6 @@ const Results = ({ className, blocks, ...rest }) => {
 
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
-  };
-
-  const toHexString = (byteArray) => {
-    return Array.from(byteArray, function (byte) {
-      return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-    }).join('')
   };
 
   const blockColorClassName = block => {
@@ -185,7 +178,7 @@ const Results = ({ className, blocks, ...rest }) => {
                                       Point: {shard_header.message.commitment.point}<br />
                                       Length: {shard_header.message.commitment.length}
                                     </TableCell>
-                                    <TableCell><code className={classes.monospace}>0x{toHexString(shard_header.signature)}</code></TableCell>
+                                    <TableCell><code className={classes.monospace}>0x{bytesToHex(shard_header.signature)}</code></TableCell>
                                   </TableRow>
                                 ))}
                               </TableBody>
