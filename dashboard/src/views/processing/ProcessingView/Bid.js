@@ -17,6 +17,7 @@ import {
 } from '@material-ui/core';
 import InsertDriveFile from '@material-ui/icons/InsertDriveFile';
 import bytesToHex from 'src/utils/bytesToHex';
+import hexToBytes from 'src/utils/hexToBytes';
 
 const useStyles = makeStyles((theme) => ({
   root: {},
@@ -108,11 +109,12 @@ const Bid = ({ className, ...rest }) => {
       shard: parseInt(shard),
       slot: parseInt(slot),
       commitment: {
-        point: parseInt(point),
+        point: hexToBytes(point),
         length: parseInt(length),
       },
       fee: parseInt(fee)
     });
+    console.log(body);
 
     let endpoint = "http://localhost:3030/data_market/bid";
     fetch(endpoint, {
@@ -189,7 +191,7 @@ const Bid = ({ className, ...rest }) => {
                 <FormLabel component="legend">Commitment</FormLabel>
                 <TextField
                   fullWidth
-                  label="Point"
+                  label="Point (hex)"
                   margin="normal"
                   name="point"
                   onChange={handleChangePoint}
