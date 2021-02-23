@@ -57,7 +57,7 @@ const Bid = ({ className, ...rest }) => {
     setSlot(event.target.value);
   };
 
-  const [point, setPoint] = useState(0);
+  const [point, setPoint] = useState("0x0");
   const handleChangePoint = (event) => {
     setPoint(event.target.value);
   };
@@ -96,7 +96,7 @@ const Bid = ({ className, ...rest }) => {
     })
       .then(response => response.json())
       .then(commitment => {
-        setPoint(bytesToHex(commitment.point));
+        setPoint("0x" + bytesToHex(commitment.point));
         setLength(commitment.length);
       })
       .catch(error => console.error("Error:", error));
@@ -105,11 +105,13 @@ const Bid = ({ className, ...rest }) => {
   const handleSubmit = event => {
     event.preventDefault();
 
+    let point_raw = hexToBytes(point.slice(2));
+
     let body = JSON.stringify({
       shard: parseInt(shard),
       slot: parseInt(slot),
       commitment: {
-        point: hexToBytes(point),
+        point: hexToBytes(point_raw),
         length: parseInt(length),
       },
       fee: parseInt(fee)
@@ -196,7 +198,7 @@ const Bid = ({ className, ...rest }) => {
                   name="point"
                   onChange={handleChangePoint}
                   variant="outlined"
-                  placeholder="0"
+                  placeholder="0x0"
                   value={point}
                 />
                 <TextField
