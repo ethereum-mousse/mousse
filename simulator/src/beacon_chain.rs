@@ -1,12 +1,16 @@
 use crate::*;
 use simulation_params::BeaconSimulationParams;
+use std::cmp;
 
 /// Beacon chain consensus
 pub struct BeaconChain {
     // The slot to be processed.
     // Note: The last processed slot is `self.slot - 1`.
     pub slot: Slot,
+    // The latest beacon state (defined even for a slot without beacon block).
+    pub state: BeaconState,
     // The latest finalized checkpoint.
+    // Note: This is off-chain finality, not the finality verified in the beacon state.
     pub finalized_checkpoint: Checkpoint,
     // Beacon blocks in the main chain.
     // Note: There can be skipped slots.
@@ -28,6 +32,7 @@ impl BeaconChain {
     pub fn new() -> Self {
         Self {
             slot: GENESIS_SLOT,
+            state: BeaconState::genesis_state(),
             finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
             blocks: Vec::new(),
             states: Vec::new(),
@@ -65,93 +70,113 @@ impl BeaconChain {
     }
 
     /// Process of a slot.
-    /// Extend the main chain by a newly proposed block.
-    pub fn process_slot(&mut self, params: &BeaconSimulationParams) {        
+    pub fn process_slot(&mut self, params: &BeaconSimulationParams) {
         if params.beacon_block_proposed {
             // Propose a new beacon block.
-            self.append_new_block_to_chain(params.shard_headers_included, params.shard_headers_confirmed);
+            // Shard shard headers to be included in the new beacon block.
+            let (included_previous_epoch_shard_headers, mut included_current_epoch_shard_headers) =
+                self.select_included_shard_headers(params.shard_headers_included); 
+            // Update the state for the new block.
+            self.update_state_for_new_block(&included_previous_epoch_shard_headers,
+                &included_current_epoch_shard_headers, params.shard_headers_confirmed);
+
+            let mut included_shard_headers = included_previous_epoch_shard_headers;
+            included_shard_headers.append(&mut included_current_epoch_shard_headers);    
+            // Append the new block to the chain.
+            self.append_new_block_to_chain(included_shard_headers);
         }
         if params.beacon_chain_finalized {
             // Finalize a new checkpoint.
             self.progress_consensus();
         }
         if (self.slot + 1) % SLOTS_PER_EPOCH == 0 {
-            // Reset the shard headers pool at the end of an epoch.
-            self.previous_epoch_shard_header_pool = self.current_epoch_shard_header_pool.clone();
-            self.current_epoch_shard_header_pool.clear();
+            self.process_epoch();
         }
-        self.slot += 1;
+        // Move to the slot to be processed.
+        self.slot += 1;       
+        self.state.slot = self.slot;
     }    
 
-    /// Create new beacon state.
-    /// This function is called before a block is proposed.
-    fn create_new_state(&self, included_previous_epoch_shard_headers: &Vec<SignedShardHeader>, 
-        included_current_epoch_shard_headers: &Vec<SignedShardHeader>, shard_headers_confirmed: bool) -> BeaconState {
-        let mut new_previous_epoch_pending_shard_headers: Vec<PendingShardHeader> =
-            included_previous_epoch_shard_headers.iter().map(|signed_header| PendingShardHeader::from_signed_shard_header(&signed_header)).collect();        
-        let mut previous_epoch_pending_shard_headers: Vec<PendingShardHeader> = 
-            if self.is_first_block_proposal() {
-                Vec::new()
-            } else if self.is_checkpoint_missing() {
-                // Inherit from the previous epoch at a checkpoint. 
-                VariableList::into(self.states.last().unwrap().current_epoch_pending_shard_headers.clone())
-            } else {
-                // Otherwise, inherit from the previous block in the current epoch.
-                VariableList::into(self.states.last().unwrap().previous_epoch_pending_shard_headers.clone())
-            };
-        previous_epoch_pending_shard_headers.append(&mut new_previous_epoch_pending_shard_headers);
+    // Process at the end of an epoch.
+    fn process_epoch(&mut self){
+        self.update_shard_gasprice();
+        // TODO: Add a test to verify the epochs of the pending shard headers.
+        // このテストを入れ忘れていたので、修正前でテスト通っていた。
+        // Inherit the current pending shard headers to the next epoch.
+        self.state.previous_epoch_pending_shard_headers = self.state.current_epoch_pending_shard_headers.clone();
+        // Reset the current pending shard headers.
+        self.state.current_epoch_pending_shard_headers = VariableList::from(Vec::new());
 
-        let mut new_current_epoch_pending_shard_headers: Vec<PendingShardHeader> =
-            included_current_epoch_shard_headers.iter().map(|signed_header| PendingShardHeader::from_signed_shard_header(&signed_header)).collect();        
-        let mut current_epoch_pending_shard_headers: Vec<PendingShardHeader> = 
-            if self.is_checkpoint_missing() {
-                // Refresh at a checkpoint. 
-                Vec::new()
-            } else {
-                // Otherwise, inherit from the previous block in the current epoch.
-                VariableList::into(self.states.last().unwrap().current_epoch_pending_shard_headers.clone())
-            };
-        current_epoch_pending_shard_headers.append(&mut new_current_epoch_pending_shard_headers);
+        // Reset the shard headers pool.
+        self.previous_epoch_shard_header_pool = self.current_epoch_shard_header_pool.clone();
+        self.current_epoch_shard_header_pool.clear();
+    }
 
-        if shard_headers_confirmed {
-            for header in &mut previous_epoch_pending_shard_headers {
-                header.confirmed = true;
-            }
-            for header in &mut current_epoch_pending_shard_headers {
-                header.confirmed = true;
+    /// Update shard gasprice.
+    fn update_shard_gasprice(&mut self) {
+        if compute_epoch_at_slot(self.slot) == GENESIS_EPOCH {
+            return
+        }
+        let mut new_gasprice = self.state.shard_gasprice;
+        let previous_epoch_start_slot = compute_start_slot_at_epoch(compute_epoch_at_slot(self.slot) - 1);
+        for slot in previous_epoch_start_slot..previous_epoch_start_slot + SLOTS_PER_EPOCH {
+            for shard in 0..SHARD_NUM as Shard {
+                let confirmed_candidates: Vec<PendingShardHeader> = self.state.previous_epoch_pending_shard_headers.iter().filter(
+                    |header| (header.slot, header.shard, header.confirmed) == (slot, shard, true)).cloned().collect();
+                if confirmed_candidates.is_empty() {
+                    continue;
+                }
+                let candidate = confirmed_candidates.get(0).unwrap();
+                // Track updated gas price
+                new_gasprice = Self::compute_updated_gasprice(
+                    new_gasprice,
+                    candidate.commitment.length,
+                )
             }
         }
+        self.state.shard_gasprice = new_gasprice
+    }
 
-        return BeaconState {
-            slot: self.slot,
-            finalized_checkpoint: self.finalized_checkpoint.clone(),
-            previous_epoch_pending_shard_headers: VariableList::from(previous_epoch_pending_shard_headers), 
-            current_epoch_pending_shard_headers: VariableList::from(current_epoch_pending_shard_headers), 
+    /// Update the pending shard headers in the state.
+    fn update_pending_shard_headers(&mut self, included_previous_epoch_shard_headers: &Vec<SignedShardHeader>, 
+        included_current_epoch_shard_headers: &Vec<SignedShardHeader>, shard_headers_confirmed: bool){
+        for signed_header in included_previous_epoch_shard_headers.iter() {
+            self.state.previous_epoch_pending_shard_headers.push(PendingShardHeader::from_signed_shard_header(&signed_header)).unwrap();
+        }
+        for signed_header in included_current_epoch_shard_headers.iter() {
+            self.state.current_epoch_pending_shard_headers.push(PendingShardHeader::from_signed_shard_header(&signed_header)).unwrap();
+        }
+
+        if shard_headers_confirmed {
+            for header in self.state.previous_epoch_pending_shard_headers.iter_mut() {
+                header.confirmed = true;
+            }
+            for header in self.state.current_epoch_pending_shard_headers.iter_mut() {
+                header.confirmed = true;
+            }
         }
     }
 
+    fn update_state_for_new_block(&mut self, included_previous_epoch_shard_headers: &Vec<SignedShardHeader>, 
+        included_current_epoch_shard_headers: &Vec<SignedShardHeader>, shard_headers_confirmed: bool) {
+        self.update_pending_shard_headers(included_previous_epoch_shard_headers,
+            included_current_epoch_shard_headers, shard_headers_confirmed);
+
+        // Assumption: A new beacon block always include the attestations of the latest finalized checkpoint.
+        self.state.finalized_checkpoint = self.finalized_checkpoint.clone();
+
+    }
+
     /// Create a new block and append to the main chain.
-    fn append_new_block_to_chain(&mut self, shard_headers_included: bool, shard_headers_confirmed: bool) {
-        // Shard shard headers to be included in the new beacon block.
-        let (included_previous_epoch_shard_headers, mut included_current_epoch_shard_headers) =
-            self.select_included_shard_headers(shard_headers_included);
-
-        // Create the new beacon state.
-        let state = self.create_new_state(&included_previous_epoch_shard_headers, &included_current_epoch_shard_headers, shard_headers_confirmed);
-        self.states.push(state.clone());
-
-        let parent_root = if self.is_first_block_proposal() {
-            GENESIS_PARENT_ROOT
-        } else {
-            self.blocks.last().unwrap().header().root()
-        };
-
-        let mut included_shard_headers = included_previous_epoch_shard_headers;
-        included_shard_headers.append(&mut included_current_epoch_shard_headers);
+    fn append_new_block_to_chain(&mut self, included_shard_headers: Vec<SignedShardHeader>) {
         let new_block = BeaconBlock {
             slot: self.slot,
-            parent_root: parent_root,
-            state_root: self.states.last().unwrap().root(),
+            parent_root: if self.is_first_block_proposal() {
+                            GENESIS_PARENT_ROOT
+                        } else {
+                            self.blocks.last().unwrap().header().root()
+                        },
+            state_root: self.state.root(),
             shard_headers: VariableList::from(included_shard_headers),
         };
 
@@ -166,7 +191,10 @@ impl BeaconChain {
         }
         assert!(self.checkpoints.len() == compute_epoch_at_slot(self.slot) as usize + 1);
 
+        // Store the new block.
         self.blocks.push(new_block);
+        // Store the state of the new block.
+        self.states.push(self.state.clone());
     }
 
     /// Shard shard headers to be included in the current slot's beacon block.
@@ -175,12 +203,12 @@ impl BeaconChain {
         let mut included_current_epoch_shard_headers: Vec<SignedShardHeader> = Vec::new();
         if shard_headers_included {
             // If the number of headers in the pool exceeds the limit, select from the older headers.
-            if self.previous_epoch_shard_header_pool.len() > MAX_SHARD_HEADERS {
+            if self.previous_epoch_shard_header_pool.len() > MAX_SHARD_HEADERS as usize {
                 // Keep the fresher headers that are not selected in the pool.
-                included_previous_epoch_shard_headers = self.previous_epoch_shard_header_pool.drain(..MAX_SHARD_HEADERS).collect();
+                included_previous_epoch_shard_headers = self.previous_epoch_shard_header_pool.drain(..MAX_SHARD_HEADERS as usize).collect();
             } else {
                 included_previous_epoch_shard_headers = self.previous_epoch_shard_header_pool.clone();
-                let max_current_epoch_shard_headers = MAX_SHARD_HEADERS - self.previous_epoch_shard_header_pool.len();
+                let max_current_epoch_shard_headers = MAX_SHARD_HEADERS as usize - self.previous_epoch_shard_header_pool.len();
                 self.previous_epoch_shard_header_pool.clear();
                 if self.current_epoch_shard_header_pool.len() > max_current_epoch_shard_headers {
                     // Keep the fresher headers that are not selected in the pool.
@@ -205,6 +233,19 @@ impl BeaconChain {
         if ((self.finalized_checkpoint == Checkpoint::genesis_finalized_checkpoint()) | (self.finalized_checkpoint.epoch < finalized_epoch)) &&
             (self.checkpoints.len() > finalized_epoch as usize) {
             self.finalized_checkpoint = self.checkpoints[finalized_epoch as usize].clone();
+        }
+    }
+
+    fn compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: u64) -> Gwei {
+        if shard_block_length > TARGET_SAMPLES_PER_BLOCK {
+            let delta = cmp::max(1, prev_gasprice * (shard_block_length - TARGET_SAMPLES_PER_BLOCK)
+                / TARGET_SAMPLES_PER_BLOCK / GASPRICE_ADJUSTMENT_QUOTIENT);
+            return cmp::min(prev_gasprice + delta, MAX_GASPRICE)
+
+        } else {
+            let delta = cmp::max(1, prev_gasprice * (TARGET_SAMPLES_PER_BLOCK - shard_block_length)
+                / TARGET_SAMPLES_PER_BLOCK / GASPRICE_ADJUSTMENT_QUOTIENT);
+            return cmp::max(prev_gasprice, MIN_GASPRICE + delta) - delta        
         }
     }
 

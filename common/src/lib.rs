@@ -28,32 +28,34 @@ mod tests {
             finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
             previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
             current_epoch_pending_shard_headers: VariableList::from(
-                signed_headers[..SHARD_NUM].iter().map(
+                signed_headers[..SHARD_NUM as usize].iter().map(
                     |signed_header| PendingShardHeader::from_signed_shard_header(signed_header)
                 ).collect::<Vec<PendingShardHeader>>()
             ),
+            shard_gasprice: 0,
         };
         let block1 = BeaconBlock {
             slot: 0,
             parent_root: H256::zero(),
             state_root: state1.root(),
-            shard_headers: VariableList::from(signed_headers[..SHARD_NUM].to_vec()),
+            shard_headers: VariableList::from(signed_headers[..SHARD_NUM as usize].to_vec()),
         };
         let state2 = BeaconState {
             slot: 1,
             finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
             previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
             current_epoch_pending_shard_headers: VariableList::from(
-                signed_headers[SHARD_NUM..].iter().map(
+                signed_headers[SHARD_NUM as usize..].iter().map(
                     |signed_header| PendingShardHeader::from_signed_shard_header(signed_header)
                 ).collect::<Vec<PendingShardHeader>>()
             ),
+            shard_gasprice: 0,
         };
         let block2 = BeaconBlock {
             slot: 1,
             parent_root: block1.header().root(),
             state_root: state2.root(),
-            shard_headers: VariableList::from(signed_headers[SHARD_NUM..].to_vec()),
+            shard_headers: VariableList::from(signed_headers[SHARD_NUM as usize..].to_vec()),
         };
         println!("block1: {}", block1.header().root());
         println!("block2: {}", block2.header().root());
@@ -68,16 +70,17 @@ mod tests {
             finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
             previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
             current_epoch_pending_shard_headers: VariableList::from(
-                signed_headers[SHARD_NUM..].iter().map(
+                signed_headers[SHARD_NUM as usize..].iter().map(
                     |signed_header| PendingShardHeader::from_signed_shard_header(signed_header)
                 ).collect::<Vec<PendingShardHeader>>()
             ),
+            shard_gasprice: 0,
         };
         let another_block2 = BeaconBlock {
             slot: 1,
             parent_root: block1.header().root(),
             state_root: state2.root(),
-            shard_headers: VariableList::from(signed_headers[SHARD_NUM..].to_vec()),
+            shard_headers: VariableList::from(signed_headers[SHARD_NUM as usize..].to_vec()),
         };
         assert_eq!(state2.root(), another_state2.root());
         assert_eq!(block2.header().root(), another_block2.header().root());

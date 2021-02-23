@@ -21,7 +21,7 @@ mod tests {
         let simulator = Simulator::new();
         // Simulator
         assert_eq!(GENESIS_SLOT, simulator.slot);
-        assert_eq!(SHARD_NUM, simulator.shards.len());
+        assert_eq!(SHARD_NUM as usize, simulator.shards.len());
         // BeaconChain
         let beacon_chain = simulator.beacon_chain;
         assert_eq!(GENESIS_SLOT, beacon_chain.slot);
@@ -259,7 +259,7 @@ mod tests {
                 result = simulator.process_slots_happy(processed_slot);
                 assert!(simulator.beacon_chain.previous_epoch_shard_header_pool.is_empty());
                 assert!(simulator.beacon_chain.current_epoch_shard_header_pool.is_empty());
-                assert_eq!(SHARD_NUM, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                assert_eq!(SHARD_NUM as usize, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
             } else if processed_slot <= catastrophy_end_slot {
                 // Catastrophic epochs without shard header inclusion.
                 result = simulator.process_slots_without_shard_header_inclusion(processed_slot);
@@ -267,7 +267,7 @@ mod tests {
             } else {
                 // Epochs after the catastrophy.
                 result = simulator.process_slots_happy(processed_slot);
-                assert!(simulator.beacon_chain.blocks.last().unwrap().shard_headers.len() >= SHARD_NUM);
+                assert!(simulator.beacon_chain.blocks.last().unwrap().shard_headers.len() >= SHARD_NUM as usize);
             }
             assert!(result.is_ok());
             // Only the shard headers from the previous or current epoch can be included.
@@ -291,7 +291,7 @@ mod tests {
                 assert!(simulator.beacon_chain.blocks.last().unwrap().shard_headers.is_empty());
             } else {
                 result = simulator.process_slots_happy(processed_slot);
-                assert_eq!(SHARD_NUM * 2, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                assert_eq!(SHARD_NUM as usize * 2, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
             };
             assert!(result.is_ok());
         }
@@ -307,7 +307,7 @@ mod tests {
             let result: Result<(), String>;
             if processed_slot % 2 == 0 {
                 result = simulator.process_slots_without_shard_header_confirmation(processed_slot);
-                assert_eq!(SHARD_NUM, simulator.beacon_chain.states.last().unwrap().current_epoch_pending_shard_headers.iter()
+                assert_eq!(SHARD_NUM as usize, simulator.beacon_chain.states.last().unwrap().current_epoch_pending_shard_headers.iter()
                     .filter(|header| !header.confirmed).collect::<Vec<&PendingShardHeader>>().len());
             } else {
                 result = simulator.process_slots_happy(processed_slot);
@@ -362,7 +362,7 @@ mod tests {
                 result = simulator.process_slots_happy(processed_slot);
                 assert_eq!(processed_slot, simulator.beacon_chain.blocks.last().unwrap().slot);
                 assert_eq!(processed_slot, simulator.beacon_chain.states.last().unwrap().slot);
-                assert_eq!(SHARD_NUM * 2, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                assert_eq!(SHARD_NUM as usize * 2, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
             };
             assert_eq!((processed_slot as usize + 1) / 2, simulator.beacon_chain.blocks.len());
             assert_eq!((processed_slot as usize + 1) / 2, simulator.beacon_chain.states.len());
@@ -394,22 +394,22 @@ mod tests {
                 // For each shard, at every slot, 4 (MAX_SHARD_HEADERS_PER_SHARD) headers are included and 1 new header is proposed.
                 if slot_in_epoch <= 8 {
                     // The previous epoch headers are fully included at the 8th slot in this epoch (bc SLOTS_PER_EPOCH = 32 = 8 * 4).
-                    assert_eq!((SLOTS_PER_EPOCH as usize - slot_in_epoch * 4) * SHARD_NUM, simulator.beacon_chain.previous_epoch_shard_header_pool.len());
-                    assert_eq!(4 * SHARD_NUM, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                    assert_eq!((SLOTS_PER_EPOCH as usize - slot_in_epoch * 4) * SHARD_NUM as usize, simulator.beacon_chain.previous_epoch_shard_header_pool.len());
+                    assert_eq!(4 * SHARD_NUM as usize, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
                 } else if slot_in_epoch < 11 {
                     // The number of headers of each shard left in the pool (initially SLOTS_PER_EPOCH) is reduced by 3 every slot.
                     // The header pools get empty at the 11th slot in this epoch (bc SLOTS_PER_EPOCH = 32 = 10 * 3 + 2).
-                    assert_eq!((SLOTS_PER_EPOCH as usize - slot_in_epoch * 3) * SHARD_NUM, simulator.beacon_chain.current_epoch_shard_header_pool.len());
-                    assert_eq!(4 * SHARD_NUM, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                    assert_eq!((SLOTS_PER_EPOCH as usize - slot_in_epoch * 3) * SHARD_NUM as usize, simulator.beacon_chain.current_epoch_shard_header_pool.len());
+                    assert_eq!(4 * SHARD_NUM as usize, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
                 } else if slot_in_epoch == 11 {
                     assert!(simulator.beacon_chain.current_epoch_shard_header_pool.is_empty());
-                    assert_eq!(3 * SHARD_NUM, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                    assert_eq!(3 * SHARD_NUM as usize, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
                 }
             } else {
                 result = simulator.process_slots_happy(processed_slot);
                 assert!(simulator.beacon_chain.previous_epoch_shard_header_pool.is_empty());
                 assert!(simulator.beacon_chain.current_epoch_shard_header_pool.is_empty());
-                assert_eq!(SHARD_NUM, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                assert_eq!(SHARD_NUM as usize, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
             }
             assert!(result.is_ok());
         }

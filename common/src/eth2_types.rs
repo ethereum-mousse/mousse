@@ -224,6 +224,7 @@ pub struct BeaconState {
     /// The length is MAX_SHARD_HEADERS * SLOTS_PER_EPOCH.
     pub previous_epoch_pending_shard_headers: VariableList<PendingShardHeader, typenum::U8192>,
     pub current_epoch_pending_shard_headers: VariableList<PendingShardHeader, typenum::U8192>,
+    pub shard_gasprice: Gwei,
 }
 
 /// Implement `Hash` manually to handle `VariableList`.
@@ -241,6 +242,17 @@ impl BeaconState {
     pub fn root(&self) -> Root {
         root(&self)
     }
+
+    pub fn genesis_state() -> Self {
+        Self {
+            slot: GENESIS_SLOT,
+            finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
+            previous_epoch_pending_shard_headers: VariableList::from(Vec::new()), 
+            current_epoch_pending_shard_headers: VariableList::from(Vec::new()),
+            shard_gasprice: INIT_SHARD_GASPRICE,
+        }
+    }
+
 }
 
 #[derive(Clone)]
