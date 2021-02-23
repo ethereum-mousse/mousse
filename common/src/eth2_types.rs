@@ -27,6 +27,7 @@ pub type BLSSignature = [u8; BLS_SIGNATURE_BYTE_LEN];
 /// TODO: This should be bytes48. We leave this fix to avoid SSZ implementation.
 /// Ref: https://github.com/sigp/lighthouse/blob/v1.0.6/crypto/bls/src/generic_public_key_bytes.rs#L22
 pub type BLSCommitment = u64;
+pub const BYTES_PER_POINT: usize = 31;
 /// Variable list of uint256. The length is MAX_SAMPLES_PER_BLOCK.
 /// TODO: Fix the length.
 pub type BlobData = VariableList<U256, typenum::U2048>;
