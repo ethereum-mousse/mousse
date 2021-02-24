@@ -145,3 +145,24 @@ impl Simulator {
         return Ok(());
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_simulator() {
+        let simulator = Simulator::new();
+        // Simulator
+        assert_eq!(GENESIS_SLOT, simulator.slot);
+        assert_eq!(SHARD_NUM as usize, simulator.shards.len());
+        // BeaconChain
+        let beacon_chain = simulator.beacon_chain;
+        assert_eq!(GENESIS_SLOT, beacon_chain.slot);
+        assert_eq!(Checkpoint::genesis_finalized_checkpoint(), beacon_chain.finalized_checkpoint);
+        assert!(beacon_chain.blocks.is_empty());
+        assert!(beacon_chain.states.is_empty());
+        assert!(beacon_chain.previous_epoch_shard_header_pool.is_empty());
+        assert!(beacon_chain.current_epoch_shard_header_pool.is_empty());
+    }
+}

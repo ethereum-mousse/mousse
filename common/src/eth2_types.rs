@@ -1,10 +1,10 @@
 //! Custom types in the Eth2 system
 //! Ref: https://github.com/ethereum/eth2.0-specs/blob/849837a07d1e3dbf7c75d71b14034c10315f6341/specs/phase1/beacon-chain.md
 use crate::eth2_config::*;
+use crate::eth2_utils::{calculate_hash, root};
 pub use ethereum_types::{H256, U256};
 use serde_derive::{Deserialize, Serialize};
 pub use ssz_types::{typenum, VariableList};
-use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 big_array! { BigArray; }
@@ -87,26 +87,6 @@ impl DataCommitment {
             length: (bytes.len() as f64 / BYTES_PER_POINT as f64).ceil() as u64,
         }
     }
-}
-
-// Ref: https://doc.rust-lang.org/std/hash/index.html#examples
-pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish()
-}
-
-/// Calculate dummy 32 bytes hash root.
-/// TODO: Replace this with SSZ root.
-fn root<T: Hash>(t: &T) -> Root {
-    let mut hash: u64 = calculate_hash(t);
-    let mut root: Vec<u8> = Vec::new();
-    for _ in 0..4 {
-        hash = calculate_hash(&hash);
-        root.extend_from_slice(&u64::to_le_bytes(hash));
-    }
-    assert_eq!(32, root.len());
-    H256::from_slice(&root)
 }
 
 /// `degree_proof` field is omitted.
@@ -254,7 +234,6 @@ impl BeaconState {
             shard_gasprice: INIT_SHARD_GASPRICE,
         }
     }
-
 }
 
 #[derive(Clone)]
@@ -265,10 +244,123 @@ pub struct ShardBlob {
     pub data: VariableList<FieldElement, typenum::U16384>,
 }
 
-pub fn compute_epoch_at_slot(slot: Slot) -> Epoch {
-    slot / SLOTS_PER_EPOCH as Epoch
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-pub fn compute_start_slot_at_epoch(epoch: Epoch) -> Slot {
-    epoch * SLOTS_PER_EPOCH as Epoch
+    #[test]
+    fn calc_root() {
+        let signed_headers: Vec<SignedShardHeader> = (0..SHARD_NUM * 2).map(|num|{
+            SignedShardHeader::dummy_from_header(
+                ShardHeader {
+                    slot: (num / SHARD_NUM) as Slot,
+                    shard: (num % SHARD_NUM) as Shard,
+                    commitment: generate_dummy_from_string(&String::from(format!("Slot {}, Shard {}", num / SHARD_NUM, num % SHARD_NUM))),
+                })}).collect();
+        let state1 = BeaconState {
+            slot: 0,
+            finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
+            previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
+            current_epoch_pending_shard_headers: VariableList::from(
+                signed_headers[..SHARD_NUM as usize].iter().map(
+                    |signed_header| PendingShardHeader::from_signed_shard_header(signed_header)
+                ).collect::<Vec<PendingShardHeader>>()
+            ),
+            shard_gasprice: 0,
+        };
+        let block1 = BeaconBlock {
+            slot: 0,
+            parent_root: H256::zero(),
+            state_root: state1.root(),
+            shard_headers: VariableList::from(signed_headers[..SHARD_NUM as usize].to_vec()),
+        };
+        let state2 = BeaconState {
+            slot: 1,
+            finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
+            previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
+            current_epoch_pending_shard_headers: VariableList::from(
+                signed_headers[SHARD_NUM as usize..].iter().map(
+                    |signed_header| PendingShardHeader::from_signed_shard_header(signed_header)
+                ).collect::<Vec<PendingShardHeader>>()
+            ),
+            shard_gasprice: 0,
+        };
+        let block2 = BeaconBlock {
+            slot: 1,
+            parent_root: block1.header().root(),
+            state_root: state2.root(),
+            shard_headers: VariableList::from(signed_headers[SHARD_NUM as usize..].to_vec()),
+        };
+        println!("block1: {}", block1.header().root());
+        println!("block2: {}", block2.header().root());
+        println!("state1: {}", state1.root());
+        println!("state2: {}", state2.root());
+        assert_ne!(block1.header().root(), block2.header().root());
+        assert_ne!(state1.root(), state2.root());
+        assert_eq!(block1.header().root(), block2.parent_root);
+
+        let another_state2 = BeaconState {
+            slot: 1,
+            finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
+            previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
+            current_epoch_pending_shard_headers: VariableList::from(
+                signed_headers[SHARD_NUM as usize..].iter().map(
+                    |signed_header| PendingShardHeader::from_signed_shard_header(signed_header)
+                ).collect::<Vec<PendingShardHeader>>()
+            ),
+            shard_gasprice: 0,
+        };
+        let another_block2 = BeaconBlock {
+            slot: 1,
+            parent_root: block1.header().root(),
+            state_root: state2.root(),
+            shard_headers: VariableList::from(signed_headers[SHARD_NUM as usize..].to_vec()),
+        };
+        assert_eq!(state2.root(), another_state2.root());
+        assert_eq!(block2.header().root(), another_block2.header().root());
+
+    }
+
+    #[test]
+    fn dummy_commitment() {
+        check_dummy_from_string(String::from(""));
+        check_dummy_from_string(String::from("hello"));
+        compare_dummy_from_string(String::from("sharding"), String::from("sharding"));
+        compare_dummy_from_string(String::from(""), String::from("Ethereum"));
+        compare_dummy_from_string(String::from("Eth1"), String::from("Eth2"));
+    }
+
+    fn check_dummy_from_string(s: String) {
+        let bytes = s.clone().into_bytes();
+        let commitment = DataCommitment::dummy_from_bytes(&bytes);
+        assert_eq!((s.len() as f64 / BYTES_PER_POINT as f64).ceil() as u64, commitment.length);
+    }
+
+    fn generate_dummy_from_string(s: &String) -> DataCommitment {
+        let bytes = s.clone().into_bytes();
+        return DataCommitment::dummy_from_bytes(&bytes)
+    }
+
+    fn compare_dummy_from_string(s1: String, s2: String) {
+        let commitment1 = generate_dummy_from_string(&s1);
+        let commitment2 = generate_dummy_from_string(&s2);
+        if s1 == s2 {
+            assert_eq!(commitment1, commitment2);
+        } else {
+            assert_ne!(commitment1, commitment2);
+        }
+    }
+
+    #[test]
+    fn dummy_signed_shard_header() {
+        let header = ShardHeader {
+            slot: 0,
+            shard: 0,
+            commitment: generate_dummy_from_string(&String::from("Ethreum")),
+        };
+        let signed_header1 = SignedShardHeader::dummy_from_header(header.clone());
+        let signed_header2 = SignedShardHeader::dummy_from_header(header);
+        // Dummy signature is deterministic.
+        assert_eq!(signed_header1, signed_header2);
+    }
 }
