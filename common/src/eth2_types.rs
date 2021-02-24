@@ -244,11 +244,3 @@ pub struct ShardBlob {
     // The length is POINTS_PER_SAMPLE * MAX_SAMPLES_PER_BLOCK.
     pub data: VariableList<FieldElement, typenum::U16384>,
 }
-
-pub fn compute_epoch_at_slot(slot: Slot) -> Epoch {
-    slot / SLOTS_PER_EPOCH as Epoch
-}
-
-pub fn compute_start_slot_at_epoch(epoch: Epoch) -> Slot {
-    epoch * SLOTS_PER_EPOCH as Epoch
-}

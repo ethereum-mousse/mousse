@@ -4,11 +4,22 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use crate::eth2_types::*;
 use crate::eth2_config::{
+    SLOTS_PER_EPOCH,
     TARGET_SAMPLES_PER_BLOCK,
     GASPRICE_ADJUSTMENT_QUOTIENT,
     MAX_GASPRICE,
     MIN_GASPRICE
 };
+
+/// Compute the epoch number at `slot`.
+pub fn compute_epoch_at_slot(slot: Slot) -> Epoch {
+    slot / SLOTS_PER_EPOCH as Epoch
+}
+
+/// Compute the start slot of `epoch`.
+pub fn compute_start_slot_at_epoch(epoch: Epoch) -> Slot {
+    epoch * SLOTS_PER_EPOCH as Epoch
+}
 
 /// Compute the updated gasprice.
 pub fn compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: u64) -> Gwei {
