@@ -1,12 +1,12 @@
 use crate::*;
 use simulation_params::ShardSimulationParams;
 
-/// Shard's data market.
-pub struct ShardDataMarket {
+/// Shard.
+pub struct Shard {
     // The slot to be processed.
     // Note: The last processed slot is `self.slot - 1`.
     pub slot: Slot,
-    pub shard: Shard,
+    pub shard_id: ShardId,
     // Published bids of each slot that are not selected by proposers yet. 
     pub bid_pool: Vec<Vec<Bid>>,
     // Proposed shard headers of each slot.
@@ -14,11 +14,11 @@ pub struct ShardDataMarket {
     pub proposed_headers: Vec<Option<SignedShardHeader>>,
 }
 
-impl ShardDataMarket {
-    pub fn new(shard: Shard) -> Self {
-        Self {
+impl Shard {
+    pub fn new(shard_id: ShardId) -> Self {
+        Shard {
             slot: GENESIS_SLOT,
-            shard,
+            shard_id: shard_id,
             bid_pool: Vec::new(),
             proposed_headers: Vec::new(),
         }
@@ -64,7 +64,7 @@ impl ShardDataMarket {
             Some(SignedShardHeader::dummy_from_header(
                 ShardHeader {
                     slot: self.slot,
-                    shard: self.shard,
+                    shard: self.shard_id,
                     commitment: commitment,
             })));
     } 
