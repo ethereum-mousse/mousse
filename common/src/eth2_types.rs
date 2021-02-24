@@ -19,6 +19,8 @@ pub type Slot = u64;
 pub type Epoch = u64;
 /// u64.
 pub type Shard = u64;
+/// Alias for `Shard`.
+pub type ShardId = Shard;
 /// u64.
 pub type Gwei = u64;
 /// H256.

@@ -1,6 +1,5 @@
 use crate::*;
 use beacon_chain::*;
-use shard::*;
 use simulation_params::*;
 
 /// Eth2 simulator.
@@ -9,7 +8,7 @@ pub struct Simulator {
     // Note: The last processed slot is `self.slot - 1`.
     pub slot: Slot,
     pub beacon_chain: BeaconChain,
-    pub shards: Vec<ShardDataMarket>,
+    pub shards: Vec<shard::Shard>,
     // Settings of the simulation of each slot.
     pub params: Vec<SimulationParams>,
 }
@@ -20,7 +19,7 @@ impl Simulator {
             slot: GENESIS_SLOT,
             beacon_chain: BeaconChain::new(),
             shards: (0..SHARD_NUM)
-                .map(|num| ShardDataMarket::new(num as Shard))
+                .map(|shard_id| shard::Shard::new(shard_id as ShardId))
                 .collect(),
             params: Vec::new(),
         }
@@ -127,8 +126,8 @@ impl Simulator {
     /// Process of a slot.
     fn process_slot(&mut self) {
         let params = &self.params[self.slot as usize];
-        for (shard_num, shard) in self.shards.iter_mut().enumerate() {
-            shard.process_slot(&params.shard_params[shard_num]);
+        for shard in self.shards.iter_mut() {
+            shard.process_slot(&params.shard_params[shard.shard_id as usize]);
             // The new shard header is published on the global subnet.
             // Assumption: If a shard blob is proposed, its header is published on the global subnet.
             if shard.proposed_headers[self.slot as usize].is_some() {

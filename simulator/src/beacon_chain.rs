@@ -117,9 +117,9 @@ impl BeaconChain {
         let mut new_gasprice = self.state.shard_gasprice;
         let previous_epoch_start_slot = compute_start_slot_at_epoch(compute_epoch_at_slot(self.slot) - 1);
         for slot in previous_epoch_start_slot..previous_epoch_start_slot + SLOTS_PER_EPOCH {
-            for shard in 0..SHARD_NUM as Shard {
+            for shard_id in 0..SHARD_NUM as ShardId {
                 let confirmed_candidates: Vec<PendingShardHeader> = self.state.previous_epoch_pending_shard_headers.iter().filter(
-                    |header| (header.slot, header.shard, header.confirmed) == (slot, shard, true)).cloned().collect();
+                    |header| (header.slot, header.shard, header.confirmed) == (slot, shard_id, true)).cloned().collect();
                 if confirmed_candidates.is_empty() {
                     continue;
                 }
