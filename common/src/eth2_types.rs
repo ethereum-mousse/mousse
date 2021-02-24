@@ -1,10 +1,10 @@
 //! Custom types in the Eth2 system
 //! Ref: https://github.com/ethereum/eth2.0-specs/blob/849837a07d1e3dbf7c75d71b14034c10315f6341/specs/phase1/beacon-chain.md
 use crate::eth2_config::*;
+use crate::eth2_utils::{calculate_hash, root};
 pub use ethereum_types::{H256, U256};
 use serde_derive::{Deserialize, Serialize};
 pub use ssz_types::{typenum, VariableList};
-use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 big_array! { BigArray; }
@@ -87,26 +87,6 @@ impl DataCommitment {
             length: (bytes.len() as f64 / BYTES_PER_POINT as f64).ceil() as u64,
         }
     }
-}
-
-// Ref: https://doc.rust-lang.org/std/hash/index.html#examples
-pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    s.finish()
-}
-
-/// Calculate dummy 32 bytes hash root.
-/// TODO: Replace this with SSZ root.
-fn root<T: Hash>(t: &T) -> Root {
-    let mut hash: u64 = calculate_hash(t);
-    let mut root: Vec<u8> = Vec::new();
-    for _ in 0..4 {
-        hash = calculate_hash(&hash);
-        root.extend_from_slice(&u64::to_le_bytes(hash));
-    }
-    assert_eq!(32, root.len());
-    H256::from_slice(&root)
 }
 
 /// `degree_proof` field is omitted.
