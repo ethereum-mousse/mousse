@@ -15,13 +15,14 @@ pub mod simulator;
 mod tests {
     use super::*;
     use simulator::Simulator;
+    use beacon_chain::BeaconChain;
 
     #[test]
     fn new_simulator() {
         let simulator = Simulator::new();
         // Simulator
         assert_eq!(GENESIS_SLOT, simulator.slot);
-        assert_eq!(SHARD_NUM, simulator.shards.len());
+        assert_eq!(SHARD_NUM as usize, simulator.shards.len());
         // BeaconChain
         let beacon_chain = simulator.beacon_chain;
         assert_eq!(GENESIS_SLOT, beacon_chain.slot);
@@ -37,17 +38,16 @@ mod tests {
         let mut simulator = Simulator::new();
         // Process until the end of the first slot of epoch 3.
         let end_slot = compute_start_slot_at_epoch(3);
-        // Next slot to be processed.
-        let next_slot = end_slot + 1;
         let result = simulator.process_slots_happy(end_slot);
         assert!(result.is_ok());
         // Simulator
         // Next slot to be processed.
-        assert_eq!(next_slot, simulator.slot);
+        assert_eq!(end_slot + 1, simulator.slot);
 
         // BeaconChain
+        // Next slot to be processed.
         let beacon_chain = simulator.beacon_chain;
-        assert_eq!(next_slot, beacon_chain.slot);
+        assert_eq!(end_slot + 1, beacon_chain.slot);
 
         // Finality
         let finalized_epoch = compute_epoch_at_slot(end_slot) - 2;
@@ -57,7 +57,7 @@ mod tests {
         assert_eq!(finalized_slot, beacon_chain.get_finalized_blocks().last().unwrap().slot);
         assert_eq!(beacon_chain.finalized_checkpoint.root, beacon_chain.get_finalized_blocks().last().unwrap().header().root());
 
-        for processed_slot in 0..next_slot {
+        for processed_slot in 0..end_slot + 1 {
             println!("Check the result of Slot {}", processed_slot);
             // Beacon blocks are proposed at every slot.
             assert_eq!(processed_slot, beacon_chain.blocks[processed_slot as usize].slot);
@@ -99,66 +99,94 @@ mod tests {
     #[test]
     fn process_slots_with_bids() {
         let mut simulator = Simulator::new();
-        let end_slot = compute_start_slot_at_epoch(2);
+        // In epoch 0, 1, and 2, bids are published.
+        let bid_end_slot = compute_start_slot_at_epoch(3);
+        // In epoch 3, 4, and 5, no bid is published to the end.
+        let end_slot = compute_start_slot_at_epoch(6);
 
+        // The gas price at the start of the currrent epoch.
+        let mut current_gasprice = simulator.beacon_chain.state.shard_gasprice;
+        // The gasprice at the end of the current epoch.
+        let mut child_epoch_gasprice = INIT_SHARD_GASPRICE;
+        // The gasprice at the end of the next epoch.
+        let mut grandchild_epoch_gasprice = INIT_SHARD_GASPRICE;
+
+        // Epochs with bid.
         for processed_slot in 0..end_slot + 1 {
             println!("Check the result of Slot {}", processed_slot);
             let mut low_fee_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = HashSet::new();
             let mut high_fee_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = HashSet::new();
-            for shard in 0..SHARD_NUM as Shard {
-                // Publish a bid with low fee and high fee.
-                let low_fee_bid = Bid {
-                    shard: shard,
-                    slot: processed_slot,
-                    commitment: DataCommitment::dummy_from_bytes(
-                        &String::from(format!("Bid with a low fee: Slot {}, Shard {}", processed_slot, shard)).into_bytes()
-                    ),
-                    fee: 1,
-                };
-                let high_fee_bid = Bid {
+            if processed_slot <= bid_end_slot {
+                for shard in 0..SHARD_NUM as Shard {
+                    // Publish a bid with low fee and high fee.
+                    let low_fee_bid = Bid {
                         shard: shard,
                         slot: processed_slot,
                         commitment: DataCommitment::dummy_from_bytes(
-                            &String::from(format!("Bid with a high fee: Slot {}, Shard {}", processed_slot, shard)).into_bytes()
+                            &String::from(format!("Bid with a low fee: Slot {}, Shard {}", processed_slot, shard)).into_bytes()
                         ),
-                        fee: 21000 * 100,
+                        fee: 1,
                     };
-                low_fee_bid_ids.insert((low_fee_bid.shard, low_fee_bid.slot, low_fee_bid.commitment.clone()));    
-                high_fee_bid_ids.insert((high_fee_bid.shard, high_fee_bid.slot, high_fee_bid.commitment.clone()));    
-                let result = simulator.publish_bid(low_fee_bid);
-                assert!(result.is_ok());
-                let result = simulator.publish_bid(high_fee_bid);
-                assert!(result.is_ok());
+                    let high_fee_bid = Bid {
+                            shard: shard,
+                            slot: processed_slot,
+                            commitment: DataCommitment::dummy_from_bytes(
+                                &String::from(format!("Bid with a high fee: Slot {}, Shard {}", processed_slot, shard)).into_bytes()
+                            ),
+                            fee: 21000 * 100,
+                        };
+                    low_fee_bid_ids.insert((low_fee_bid.shard, low_fee_bid.slot, low_fee_bid.commitment.clone()));    
+                    high_fee_bid_ids.insert((high_fee_bid.shard, high_fee_bid.slot, high_fee_bid.commitment.clone()));    
+                    let result = simulator.publish_bid(low_fee_bid);
+                    assert!(result.is_ok());
+                    let result = simulator.publish_bid(high_fee_bid);
+                    assert!(result.is_ok());
+                }
             }
 
             let result = simulator.process_slots_happy(processed_slot);
             assert!(result.is_ok());
             
-            // Only the bid with the highest fee is included in the shard header.
-            let proposed_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = 
-                simulator.shards.iter().map(|shard|{
-                    let header = shard.proposed_headers.last().unwrap().clone().unwrap().message;
-                    (header.shard, header.slot, header.commitment)
-                }).collect();
-            assert_eq!(high_fee_bid_ids, proposed_bid_ids);
-            assert!(low_fee_bid_ids.is_disjoint(&proposed_bid_ids));
+            if processed_slot <= bid_end_slot {
+                // Only the bid with the highest fee is included in the shard header.
+                let proposed_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = 
+                    simulator.shards.iter().map(|shard|{
+                        let header = shard.proposed_headers.last().unwrap().clone().unwrap().message;
+                        (header.shard, header.slot, header.commitment)
+                    }).collect();
+                assert_eq!(high_fee_bid_ids, proposed_bid_ids);
+                assert!(low_fee_bid_ids.is_disjoint(&proposed_bid_ids));
 
-            // All the bid with the highest fee is included and confirmed in the beacon chain.
-            let confirmed_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = 
-                simulator.beacon_chain.states.last().unwrap().current_epoch_pending_shard_headers.iter().filter_map(|header|{
-                    if header.confirmed {
-                        Some((header.shard, header.slot, header.commitment.clone())) 
-                    } else {
-                        None
-                    }}).collect();
-            assert!(high_fee_bid_ids.is_subset(&confirmed_bid_ids));
+                // All the bid with the highest fee is included and confirmed in the beacon chain.
+                let confirmed_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = 
+                    simulator.beacon_chain.states.last().unwrap().current_epoch_pending_shard_headers.iter().filter_map(|header|{
+                        if header.confirmed {
+                            Some((header.shard, header.slot, header.commitment.clone())) 
+                        } else {
+                            None
+                        }}).collect();
+                assert!(high_fee_bid_ids.is_subset(&confirmed_bid_ids));
 
-            // No bid with lower fee is included in the beacon chain.
-            let included_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = 
-                simulator.beacon_chain.states.last().unwrap().current_epoch_pending_shard_headers.iter().map(
-                    |header|{(header.shard, header.slot, header.commitment.clone())}).collect();
-            assert!(low_fee_bid_ids.is_disjoint(&included_bid_ids));
+                // No bid with lower fee is included in the beacon chain.
+                let included_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = 
+                    simulator.beacon_chain.states.last().unwrap().current_epoch_pending_shard_headers.iter().map(
+                        |header|{(header.shard, header.slot, header.commitment.clone())}).collect();
+                assert!(low_fee_bid_ids.is_disjoint(&included_bid_ids));
+            }
 
+            // Verify shard gasprice.
+            // The data whose commitments confirmed in the current epoch affects the gas price at the end of the next epoch.
+            grandchild_epoch_gasprice = BeaconChain::compute_updated_gasprice(grandchild_epoch_gasprice,
+                high_fee_bid_ids.iter().map(|bid_id| bid_id.2.length).sum());
+            if (processed_slot + 1) % SLOTS_PER_EPOCH == 0 {
+                // Shard gasprice is updated at the end of an epoch.
+                assert_eq!(simulator.beacon_chain.state.shard_gasprice, child_epoch_gasprice);
+                child_epoch_gasprice = grandchild_epoch_gasprice;
+                current_gasprice= simulator.beacon_chain.state.shard_gasprice;
+            } else {
+                // Otherwise, shard gasprice is not updated.
+                assert_eq!(simulator.beacon_chain.state.shard_gasprice, current_gasprice)
+            }
         }
     }
 
@@ -259,7 +287,7 @@ mod tests {
                 result = simulator.process_slots_happy(processed_slot);
                 assert!(simulator.beacon_chain.previous_epoch_shard_header_pool.is_empty());
                 assert!(simulator.beacon_chain.current_epoch_shard_header_pool.is_empty());
-                assert_eq!(SHARD_NUM, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                assert_eq!(SHARD_NUM as usize, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
             } else if processed_slot <= catastrophy_end_slot {
                 // Catastrophic epochs without shard header inclusion.
                 result = simulator.process_slots_without_shard_header_inclusion(processed_slot);
@@ -267,14 +295,24 @@ mod tests {
             } else {
                 // Epochs after the catastrophy.
                 result = simulator.process_slots_happy(processed_slot);
-                assert!(simulator.beacon_chain.blocks.last().unwrap().shard_headers.len() >= SHARD_NUM);
+                assert!(simulator.beacon_chain.blocks.last().unwrap().shard_headers.len() >= SHARD_NUM as usize);
             }
             assert!(result.is_ok());
+            let processed_epoch = compute_epoch_at_slot(processed_slot);
             // Only the shard headers from the previous or current epoch can be included.
             for signed_header in simulator.beacon_chain.blocks.last().unwrap().shard_headers.iter() {
-                assert!((compute_epoch_at_slot(processed_slot) == compute_epoch_at_slot(signed_header.message.slot)) ||
-                (compute_epoch_at_slot(processed_slot) == compute_epoch_at_slot(signed_header.message.slot) + 1));                        
+                assert!((processed_epoch == compute_epoch_at_slot(signed_header.message.slot)) ||
+                (processed_epoch == compute_epoch_at_slot(signed_header.message.slot) + 1));                        
             }
+        }
+        // Invariants about pending shard headers.
+        for state in simulator.beacon_chain.states.iter() {
+            for header in state.previous_epoch_pending_shard_headers.iter() {
+                assert_eq!(compute_epoch_at_slot(state.slot), compute_epoch_at_slot(header.slot) + 1);
+            }
+            for header in state.current_epoch_pending_shard_headers.iter() {
+                assert_eq!(compute_epoch_at_slot(state.slot), compute_epoch_at_slot(header.slot));
+            }    
         }
     }    
 
@@ -291,7 +329,7 @@ mod tests {
                 assert!(simulator.beacon_chain.blocks.last().unwrap().shard_headers.is_empty());
             } else {
                 result = simulator.process_slots_happy(processed_slot);
-                assert_eq!(SHARD_NUM * 2, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                assert_eq!(SHARD_NUM as usize * 2, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
             };
             assert!(result.is_ok());
         }
@@ -307,7 +345,7 @@ mod tests {
             let result: Result<(), String>;
             if processed_slot % 2 == 0 {
                 result = simulator.process_slots_without_shard_header_confirmation(processed_slot);
-                assert_eq!(SHARD_NUM, simulator.beacon_chain.states.last().unwrap().current_epoch_pending_shard_headers.iter()
+                assert_eq!(SHARD_NUM as usize, simulator.beacon_chain.states.last().unwrap().current_epoch_pending_shard_headers.iter()
                     .filter(|header| !header.confirmed).collect::<Vec<&PendingShardHeader>>().len());
             } else {
                 result = simulator.process_slots_happy(processed_slot);
@@ -362,7 +400,7 @@ mod tests {
                 result = simulator.process_slots_happy(processed_slot);
                 assert_eq!(processed_slot, simulator.beacon_chain.blocks.last().unwrap().slot);
                 assert_eq!(processed_slot, simulator.beacon_chain.states.last().unwrap().slot);
-                assert_eq!(SHARD_NUM * 2, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                assert_eq!(SHARD_NUM as usize * 2, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
             };
             assert_eq!((processed_slot as usize + 1) / 2, simulator.beacon_chain.blocks.len());
             assert_eq!((processed_slot as usize + 1) / 2, simulator.beacon_chain.states.len());
@@ -394,44 +432,54 @@ mod tests {
                 // For each shard, at every slot, 4 (MAX_SHARD_HEADERS_PER_SHARD) headers are included and 1 new header is proposed.
                 if slot_in_epoch <= 8 {
                     // The previous epoch headers are fully included at the 8th slot in this epoch (bc SLOTS_PER_EPOCH = 32 = 8 * 4).
-                    assert_eq!((SLOTS_PER_EPOCH as usize - slot_in_epoch * 4) * SHARD_NUM, simulator.beacon_chain.previous_epoch_shard_header_pool.len());
-                    assert_eq!(4 * SHARD_NUM, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                    assert_eq!((SLOTS_PER_EPOCH as usize - slot_in_epoch * 4) * SHARD_NUM as usize, simulator.beacon_chain.previous_epoch_shard_header_pool.len());
+                    assert_eq!(4 * SHARD_NUM as usize, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
                 } else if slot_in_epoch < 11 {
                     // The number of headers of each shard left in the pool (initially SLOTS_PER_EPOCH) is reduced by 3 every slot.
                     // The header pools get empty at the 11th slot in this epoch (bc SLOTS_PER_EPOCH = 32 = 10 * 3 + 2).
-                    assert_eq!((SLOTS_PER_EPOCH as usize - slot_in_epoch * 3) * SHARD_NUM, simulator.beacon_chain.current_epoch_shard_header_pool.len());
-                    assert_eq!(4 * SHARD_NUM, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                    assert_eq!((SLOTS_PER_EPOCH as usize - slot_in_epoch * 3) * SHARD_NUM as usize, simulator.beacon_chain.current_epoch_shard_header_pool.len());
+                    assert_eq!(4 * SHARD_NUM as usize, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
                 } else if slot_in_epoch == 11 {
                     assert!(simulator.beacon_chain.current_epoch_shard_header_pool.is_empty());
-                    assert_eq!(3 * SHARD_NUM, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                    assert_eq!(3 * SHARD_NUM as usize, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
                 }
             } else {
                 result = simulator.process_slots_happy(processed_slot);
                 assert!(simulator.beacon_chain.previous_epoch_shard_header_pool.is_empty());
                 assert!(simulator.beacon_chain.current_epoch_shard_header_pool.is_empty());
-                assert_eq!(SHARD_NUM, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
+                assert_eq!(SHARD_NUM as usize, simulator.beacon_chain.blocks.last().unwrap().shard_headers.len());
             }
             assert!(result.is_ok());
         }
         let processed_epoch = compute_epoch_at_slot(end_slot);
-        assert_eq!(processed_epoch, simulator.beacon_chain.checkpoints.last().unwrap().epoch);
         // A checkpoint must be defined for any epoch.
+        assert_eq!(processed_epoch, simulator.beacon_chain.checkpoints.last().unwrap().epoch);
         assert_eq!(processed_epoch as usize + 1, simulator.beacon_chain.checkpoints.len());
         for (epoch, checkpoint) in simulator.beacon_chain.checkpoints.iter().enumerate() {
             assert_eq!(epoch as Epoch, checkpoint.epoch);
-        }
+        }    
+
         // The block of the catastrophic epoch's checkpoint is the same with the next epochs' checkpoint.
         assert_eq!(simulator.beacon_chain.checkpoints[catastrophic_epoch as usize].root,
             simulator.beacon_chain.checkpoints[catastrophic_epoch as usize + 1].root);
+
+        // Invariants about pending shard headers.
+        for state in simulator.beacon_chain.states.iter() {
+            for header in state.previous_epoch_pending_shard_headers.iter() {
+                assert_eq!(compute_epoch_at_slot(state.slot), compute_epoch_at_slot(header.slot) + 1);
+            }
+            for header in state.current_epoch_pending_shard_headers.iter() {
+                assert_eq!(compute_epoch_at_slot(state.slot), compute_epoch_at_slot(header.slot));
+            }    
+        }
     }
 
     #[test]
     fn process_slots_random() {
         let mut simulator = Simulator::new();
         let end_slot = compute_start_slot_at_epoch(200);
-        let next_slot = end_slot + 1;
         let mut block_proposed_slots = 0;
-        for processed_slot in 0..next_slot {
+        for processed_slot in 0..end_slot + 1 {
             println!("Check the result of Slot {}", processed_slot);
             // Start with slots without beacon blocks, and then process randomly.
             let result = if processed_slot < 90 {
@@ -440,18 +488,35 @@ mod tests {
                 simulator.process_slots_random(processed_slot)
             };
             assert!(result.is_ok());
+            assert_eq!(processed_slot + 1, simulator.slot);
+            // Verify the length of the main chain.
             if simulator.params.last().unwrap().beacon_params.beacon_block_proposed {
                 block_proposed_slots += 1;
             }
+            assert_eq!(block_proposed_slots, simulator.beacon_chain.blocks.len());
+            assert_eq!(block_proposed_slots, simulator.beacon_chain.states.len());    
+
             // Verify the hash chain.
             if block_proposed_slots == 1 {
                 assert_eq!(GENESIS_PARENT_ROOT, simulator.beacon_chain.blocks[0].parent_root);
             } else if block_proposed_slots > 1 {
-                assert_eq!(simulator.beacon_chain.blocks[block_proposed_slots - 2].header().root(), simulator.beacon_chain.blocks[block_proposed_slots - 1].parent_root);
+                assert_eq!(simulator.beacon_chain.blocks[block_proposed_slots - 2].header().root(),
+                    simulator.beacon_chain.blocks[block_proposed_slots - 1].parent_root);
             }
-            assert_eq!(block_proposed_slots, simulator.beacon_chain.blocks.len());
-            assert_eq!(block_proposed_slots, simulator.beacon_chain.states.len());    
         }
-        assert_eq!(next_slot, simulator.slot);
+        let processed_epoch = compute_epoch_at_slot(end_slot);
+        // A checkpoint must be defined for any epoch.
+        assert_eq!(processed_epoch, simulator.beacon_chain.checkpoints.last().unwrap().epoch);
+        assert_eq!(processed_epoch as usize + 1, simulator.beacon_chain.checkpoints.len());
+
+        // Invariants about pending shard headers.
+        for state in simulator.beacon_chain.states.iter() {
+            for header in state.previous_epoch_pending_shard_headers.iter() {
+                assert_eq!(compute_epoch_at_slot(state.slot), compute_epoch_at_slot(header.slot) + 1);
+            }
+            for header in state.current_epoch_pending_shard_headers.iter() {
+                assert_eq!(compute_epoch_at_slot(state.slot), compute_epoch_at_slot(header.slot));
+            }    
+        }
     }
 }
