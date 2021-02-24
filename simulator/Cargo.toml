@@ -10,6 +10,7 @@ edition = "2018"
 common = { path="../common" }
 rand = "0.8.0"
 criterion = "0.3.4"
+thiserror = "1.0.24"
 
 [[bench]]
 name = "my_bench"

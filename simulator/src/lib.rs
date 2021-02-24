@@ -11,3 +11,4 @@ mod beacon_chain;
 mod shard;
 mod simulation_params;
 pub mod simulator;
+pub mod errors;
