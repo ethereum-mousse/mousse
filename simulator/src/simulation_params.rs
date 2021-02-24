@@ -1,5 +1,7 @@
 use crate::*;
+
 /// Settings of the shard simulation of a slot.
+#[derive(Debug)]
 pub struct ShardSimulationParams {
     /// Whether or not a shard blob is proposed.
     /// Assumption: If a shard blob is proposed, its header is published on the global subnet.
@@ -41,6 +43,7 @@ impl ShardSimulationParams {
 }
 
 /// Settings of the beacon chain simulation of a slot.
+#[derive(Debug)]
 pub struct BeaconSimulationParams {
     /// Whether or not a beacon block is proposed.
     pub beacon_block_proposed: bool,
@@ -125,6 +128,7 @@ impl BeaconSimulationParams {
 
 /// Settings of the simulation of a slot.
 /// TODO: Add more complicated failure cases.
+#[derive(Debug)]
 pub struct SimulationParams {
     /// Settings of the beacon chain simulation of a slot.
     pub beacon_params: BeaconSimulationParams,
