@@ -1,6 +1,5 @@
 use crate::*;
 use simulation_params::BeaconSimulationParams;
-use std::cmp;
 
 /// Beacon chain consensus
 pub struct BeaconChain {
@@ -125,7 +124,7 @@ impl BeaconChain {
                 }
                 let candidate = confirmed_candidates.get(0).unwrap();
                 // Track updated gas price
-                new_gasprice = Self::compute_updated_gasprice(
+                new_gasprice = compute_updated_gasprice(
                     new_gasprice,
                     candidate.commitment.length,
                 )
@@ -234,19 +233,6 @@ impl BeaconChain {
         if ((self.finalized_checkpoint == Checkpoint::genesis_finalized_checkpoint()) | (self.finalized_checkpoint.epoch < finalized_epoch)) &&
             (self.checkpoints.len() > finalized_epoch as usize) {
             self.finalized_checkpoint = self.checkpoints[finalized_epoch as usize].clone();
-        }
-    }
-
-    pub fn compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: u64) -> Gwei {
-        if shard_block_length > TARGET_SAMPLES_PER_BLOCK {
-            let delta = cmp::max(1, prev_gasprice * (shard_block_length - TARGET_SAMPLES_PER_BLOCK)
-                / TARGET_SAMPLES_PER_BLOCK / GASPRICE_ADJUSTMENT_QUOTIENT);
-            return cmp::min(prev_gasprice + delta, MAX_GASPRICE)
-
-        } else {
-            let delta = cmp::max(1, prev_gasprice * (TARGET_SAMPLES_PER_BLOCK - shard_block_length)
-                / TARGET_SAMPLES_PER_BLOCK / GASPRICE_ADJUSTMENT_QUOTIENT);
-            return cmp::max(prev_gasprice, MIN_GASPRICE + delta) - delta        
         }
     }
 
