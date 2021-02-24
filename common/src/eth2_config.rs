@@ -1,5 +1,6 @@
 //! Configuration of the Eth2 system.
-use crate::eth2_types::*;
+use crate::eth2_types::{H256, Slot, Epoch, Root, Gwei};
+
 pub const GENESIS_SLOT: Slot = 0;
 pub const GENESIS_EPOCH: Epoch = 0;
 pub const GENESIS_PARENT_ROOT: Root = H256::zero();
