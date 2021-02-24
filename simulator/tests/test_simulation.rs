@@ -457,7 +457,8 @@ fn process_slots_random() {
     for processed_slot in 0..end_slot {
         println!("Check the result of Slot {}", processed_slot);
         // Start with slots without beacon blocks, and then process randomly.
-        let result = if processed_slot < 90 {
+        // Do not propose a block until the first slot of some epoch.
+        let result = if processed_slot <= end_slot / 4 {
              simulator.process_slots_without_beacon_block_proposal(processed_slot)
         } else {
             simulator.process_slots_random(processed_slot)
