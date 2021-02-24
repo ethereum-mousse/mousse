@@ -15,6 +15,7 @@ pub mod simulator;
 mod tests {
     use super::*;
     use simulator::Simulator;
+    use beacon_chain::BeaconChain;
 
     #[test]
     fn new_simulator() {
@@ -98,66 +99,94 @@ mod tests {
     #[test]
     fn process_slots_with_bids() {
         let mut simulator = Simulator::new();
-        let end_slot = compute_start_slot_at_epoch(2);
+        // In epoch 0, 1, and 2, bids are published.
+        let bid_end_slot = compute_start_slot_at_epoch(3);
+        // In epoch 3, 4, and 5, no bid is published to the end.
+        let end_slot = compute_start_slot_at_epoch(6);
 
+        // The gas price at the start of the currrent epoch.
+        let mut current_gasprice = simulator.beacon_chain.state.shard_gasprice;
+        // The gasprice at the end of the current epoch.
+        let mut child_epoch_gasprice = INIT_SHARD_GASPRICE;
+        // The gasprice at the end of the next epoch.
+        let mut grandchild_epoch_gasprice = INIT_SHARD_GASPRICE;
+
+        // Epochs with bid.
         for processed_slot in 0..end_slot + 1 {
             println!("Check the result of Slot {}", processed_slot);
             let mut low_fee_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = HashSet::new();
             let mut high_fee_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = HashSet::new();
-            for shard in 0..SHARD_NUM as Shard {
-                // Publish a bid with low fee and high fee.
-                let low_fee_bid = Bid {
-                    shard: shard,
-                    slot: processed_slot,
-                    commitment: DataCommitment::dummy_from_bytes(
-                        &String::from(format!("Bid with a low fee: Slot {}, Shard {}", processed_slot, shard)).into_bytes()
-                    ),
-                    fee: 1,
-                };
-                let high_fee_bid = Bid {
+            if processed_slot <= bid_end_slot {
+                for shard in 0..SHARD_NUM as Shard {
+                    // Publish a bid with low fee and high fee.
+                    let low_fee_bid = Bid {
                         shard: shard,
                         slot: processed_slot,
                         commitment: DataCommitment::dummy_from_bytes(
-                            &String::from(format!("Bid with a high fee: Slot {}, Shard {}", processed_slot, shard)).into_bytes()
+                            &String::from(format!("Bid with a low fee: Slot {}, Shard {}", processed_slot, shard)).into_bytes()
                         ),
-                        fee: 21000 * 100,
+                        fee: 1,
                     };
-                low_fee_bid_ids.insert((low_fee_bid.shard, low_fee_bid.slot, low_fee_bid.commitment.clone()));    
-                high_fee_bid_ids.insert((high_fee_bid.shard, high_fee_bid.slot, high_fee_bid.commitment.clone()));    
-                let result = simulator.publish_bid(low_fee_bid);
-                assert!(result.is_ok());
-                let result = simulator.publish_bid(high_fee_bid);
-                assert!(result.is_ok());
+                    let high_fee_bid = Bid {
+                            shard: shard,
+                            slot: processed_slot,
+                            commitment: DataCommitment::dummy_from_bytes(
+                                &String::from(format!("Bid with a high fee: Slot {}, Shard {}", processed_slot, shard)).into_bytes()
+                            ),
+                            fee: 21000 * 100,
+                        };
+                    low_fee_bid_ids.insert((low_fee_bid.shard, low_fee_bid.slot, low_fee_bid.commitment.clone()));    
+                    high_fee_bid_ids.insert((high_fee_bid.shard, high_fee_bid.slot, high_fee_bid.commitment.clone()));    
+                    let result = simulator.publish_bid(low_fee_bid);
+                    assert!(result.is_ok());
+                    let result = simulator.publish_bid(high_fee_bid);
+                    assert!(result.is_ok());
+                }
             }
 
             let result = simulator.process_slots_happy(processed_slot);
             assert!(result.is_ok());
             
-            // Only the bid with the highest fee is included in the shard header.
-            let proposed_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = 
-                simulator.shards.iter().map(|shard|{
-                    let header = shard.proposed_headers.last().unwrap().clone().unwrap().message;
-                    (header.shard, header.slot, header.commitment)
-                }).collect();
-            assert_eq!(high_fee_bid_ids, proposed_bid_ids);
-            assert!(low_fee_bid_ids.is_disjoint(&proposed_bid_ids));
+            if processed_slot <= bid_end_slot {
+                // Only the bid with the highest fee is included in the shard header.
+                let proposed_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = 
+                    simulator.shards.iter().map(|shard|{
+                        let header = shard.proposed_headers.last().unwrap().clone().unwrap().message;
+                        (header.shard, header.slot, header.commitment)
+                    }).collect();
+                assert_eq!(high_fee_bid_ids, proposed_bid_ids);
+                assert!(low_fee_bid_ids.is_disjoint(&proposed_bid_ids));
 
-            // All the bid with the highest fee is included and confirmed in the beacon chain.
-            let confirmed_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = 
-                simulator.beacon_chain.states.last().unwrap().current_epoch_pending_shard_headers.iter().filter_map(|header|{
-                    if header.confirmed {
-                        Some((header.shard, header.slot, header.commitment.clone())) 
-                    } else {
-                        None
-                    }}).collect();
-            assert!(high_fee_bid_ids.is_subset(&confirmed_bid_ids));
+                // All the bid with the highest fee is included and confirmed in the beacon chain.
+                let confirmed_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = 
+                    simulator.beacon_chain.states.last().unwrap().current_epoch_pending_shard_headers.iter().filter_map(|header|{
+                        if header.confirmed {
+                            Some((header.shard, header.slot, header.commitment.clone())) 
+                        } else {
+                            None
+                        }}).collect();
+                assert!(high_fee_bid_ids.is_subset(&confirmed_bid_ids));
 
-            // No bid with lower fee is included in the beacon chain.
-            let included_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = 
-                simulator.beacon_chain.states.last().unwrap().current_epoch_pending_shard_headers.iter().map(
-                    |header|{(header.shard, header.slot, header.commitment.clone())}).collect();
-            assert!(low_fee_bid_ids.is_disjoint(&included_bid_ids));
+                // No bid with lower fee is included in the beacon chain.
+                let included_bid_ids: HashSet<(Shard, Slot, DataCommitment)> = 
+                    simulator.beacon_chain.states.last().unwrap().current_epoch_pending_shard_headers.iter().map(
+                        |header|{(header.shard, header.slot, header.commitment.clone())}).collect();
+                assert!(low_fee_bid_ids.is_disjoint(&included_bid_ids));
+            }
 
+            // Verify shard gasprice.
+            // The data whose commitments confirmed in the current epoch affects the gas price at the end of the next epoch.
+            grandchild_epoch_gasprice = BeaconChain::compute_updated_gasprice(grandchild_epoch_gasprice,
+                high_fee_bid_ids.iter().map(|bid_id| bid_id.2.length).sum());
+            if (processed_slot + 1) % SLOTS_PER_EPOCH == 0 {
+                // Shard gasprice is updated at the end of an epoch.
+                assert_eq!(simulator.beacon_chain.state.shard_gasprice, child_epoch_gasprice);
+                child_epoch_gasprice = grandchild_epoch_gasprice;
+                current_gasprice= simulator.beacon_chain.state.shard_gasprice;
+            } else {
+                // Otherwise, shard gasprice is not updated.
+                assert_eq!(simulator.beacon_chain.state.shard_gasprice, current_gasprice)
+            }
         }
     }
 

@@ -13,11 +13,10 @@ pub struct BeaconChain {
     // Note: This is off-chain finality, not the finality verified in the beacon state.
     pub finalized_checkpoint: Checkpoint,
     // Beacon blocks in the main chain.
-    // Note: There can be skipped slots.
+    // Note: Slots can be "skipped" i.e., there can be slots without beacon block proposal.
     // Assumption: No reorg or equivocation. (At most one block exists for each slot.)
     pub blocks: Vec<BeaconBlock>,
     // Beacon state at block of the main chain.
-    // Note: Should we define a state for a slot without beacon block proposal?
     pub states: Vec<BeaconState>,
     // Checkpoints of each epoch in the main chain.
     // Note: A block can be the checkpoint for multiple consecutive epochs.
@@ -135,7 +134,8 @@ impl BeaconChain {
         self.state.shard_gasprice = new_gasprice
     }
 
-    /// Update the pending shard headers in the state.
+    /// Update the pending shard headers in the beacon state.
+    /// Store the shard headers included in the new beacon block in the state.
     fn update_pending_shard_headers(&mut self, included_previous_epoch_shard_headers: &Vec<SignedShardHeader>, 
         included_current_epoch_shard_headers: &Vec<SignedShardHeader>, shard_headers_confirmed: bool){
         for signed_header in included_previous_epoch_shard_headers.iter() {
@@ -155,6 +155,7 @@ impl BeaconChain {
         }
     }
 
+    /// Update the beacon state for the new beacon block.
     fn update_state_for_new_block(&mut self, included_previous_epoch_shard_headers: &Vec<SignedShardHeader>, 
         included_current_epoch_shard_headers: &Vec<SignedShardHeader>, shard_headers_confirmed: bool) {
         self.update_pending_shard_headers(included_previous_epoch_shard_headers,
@@ -221,7 +222,9 @@ impl BeaconChain {
         return (included_previous_epoch_shard_headers, included_current_epoch_shard_headers)
     }
 
-    /// Progress consensus.
+    /// Progress consensus (off-chain finality).
+    /// The `finalized_checkpoint` in the beacon state is not updated in a slot without block proposal,
+    /// since attestations to finalized the checkpoint are not included in the chain yet.
     /// Assumption: Checkpoints can be finalized only in the grandchild epochs.
     fn progress_consensus(&mut self) {
         if compute_epoch_at_slot(self.slot) < 2 {
@@ -234,7 +237,7 @@ impl BeaconChain {
         }
     }
 
-    fn compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: u64) -> Gwei {
+    pub fn compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: u64) -> Gwei {
         if shard_block_length > TARGET_SAMPLES_PER_BLOCK {
             let delta = cmp::max(1, prev_gasprice * (shard_block_length - TARGET_SAMPLES_PER_BLOCK)
                 / TARGET_SAMPLES_PER_BLOCK / GASPRICE_ADJUSTMENT_QUOTIENT);
@@ -247,7 +250,7 @@ impl BeaconChain {
         }
     }
 
-    /// Whether or not it is the first time to propsoe a beacon block.
+    /// Whether or not it is the first time to propose a beacon block.
     fn is_first_block_proposal(&self) -> bool {
         self.blocks.is_empty()
     }
