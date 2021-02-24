@@ -444,11 +444,17 @@ fn recovery_from_epoch_without_beacon_block_proposal() {
 }
 
 #[test]
+fn repeat_process_slots_random() {
+    for _ in 0..32 {
+        process_slots_random()
+    }
+}
+
 fn process_slots_random() {
     let mut simulator = Simulator::new();
-    let end_slot = compute_start_slot_at_epoch(200);
+    let end_slot = compute_start_slot_at_epoch(8);
     let mut block_proposed_slots = 0;
-    for processed_slot in 0..end_slot + 1 {
+    for processed_slot in 0..end_slot {
         println!("Check the result of Slot {}", processed_slot);
         // Start with slots without beacon blocks, and then process randomly.
         let result = if processed_slot < 90 {
@@ -457,6 +463,10 @@ fn process_slots_random() {
             simulator.process_slots_random(processed_slot)
         };
         assert!(result.is_ok());
+        println!("Beacon Params: {:?}", simulator.params.last().unwrap().beacon_params);
+        // Note: Currently, all the shard uses the same params.
+        println!("Shard Params: {:?}", simulator.params.last().unwrap().shard_params.get(0).unwrap());
+        // `simulator.slot` is the next slot to be processed.
         assert_eq!(processed_slot + 1, simulator.slot);
         // Verify the length of the main chain.
         if simulator.params.last().unwrap().beacon_params.beacon_block_proposed {
@@ -473,6 +483,10 @@ fn process_slots_random() {
                 simulator.beacon_chain.blocks[block_proposed_slots - 1].parent_root);
         }
     }
+    // End with happy slot to fill the checkpoint.
+    let result = simulator.process_slots_happy(end_slot);
+    assert!(result.is_ok());
+
     let processed_epoch = compute_epoch_at_slot(end_slot);
     // A checkpoint must be defined for any epoch.
     assert_eq!(processed_epoch, simulator.beacon_chain.checkpoints.last().unwrap().epoch);
