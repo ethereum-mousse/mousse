@@ -6,7 +6,7 @@ use serde_derive::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use warp::Filter;
+use warp::{http::StatusCode, reject, Filter};
 
 pub use common::bid::Bid;
 pub use common::eth2_config::*;
@@ -37,7 +37,9 @@ async fn main() {
     let simulator = Arc::new(Mutex::new(Simulator::new()));
     let request_logs = Arc::new(Mutex::new(Vec::<RequestLog>::new()));
 
-    let routes = filters(simulator, request_logs);
+    let routes = filters(simulator, request_logs)
+        .recover(handle_rejection)
+        .with(cors());
 
     let port = if let Some(port) = matches.value_of("port") {
         port.parse().expect("END_SLOT must be a positive integer")
@@ -116,8 +118,9 @@ fn with_request_logs(
 fn cors() -> warp::cors::Builder {
     warp::cors()
         .allow_any_origin()
+        .allow_credentials(true)
         .allow_headers(vec!["Content-Type"])
-        .allow_methods(vec!["GET", "POST", "DELETE"])
+        .allow_methods(vec!["GET", "POST", "PUT", "DELETE"])
 }
 
 fn log(request_logs: &mut tokio::sync::MutexGuard<Vec<RequestLog>>, endpoint: String) {
@@ -127,6 +130,39 @@ fn log(request_logs: &mut tokio::sync::MutexGuard<Vec<RequestLog>>, endpoint: St
         date: Local::now().to_string(),
         endpoint,
     });
+}
+
+#[derive(Serialize)]
+struct ErrorMessage {
+    code: u16,
+    message: String,
+}
+
+async fn handle_rejection(err: reject::Rejection) -> Result<impl warp::Reply, Infallible> {
+    let code;
+    let message;
+
+    if err.is_not_found() {
+        code = StatusCode::NOT_FOUND;
+        message = "NOT_FOUND";
+    } else if let Some(GivenSlotIsLowerThanAndEqualToCurrentSlot) = err.find() {
+        code = StatusCode::BAD_REQUEST;
+        message = "BAD_REQUEST: The given slot <= the current slot.";
+    } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
+        code = StatusCode::METHOD_NOT_ALLOWED;
+        message = "METHOD_NOT_ALLOWED";
+    } else {
+        eprintln!("unhandled rejection: {:?}", err);
+        code = StatusCode::INTERNAL_SERVER_ERROR;
+        message = "UNHANDLED_REJECTION";
+    }
+
+    let json = warp::reply::json(&ErrorMessage {
+        code: code.as_u16(),
+        message: message.into(),
+    });
+
+    Ok(warp::reply::with_status(json, code))
 }
 
 /// GET /
@@ -145,7 +181,6 @@ pub fn beacon_blocks(
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(get_beacon_blocks)
-        .with(cors())
 }
 
 pub async fn get_beacon_blocks(
@@ -169,7 +204,6 @@ pub fn beacon_blocks_head(
         .and(with_simulator(simulator))
         // .and(with_request_logs(request_logs))
         .and_then(get_beacon_blocks_head)
-        .with(cors())
 }
 
 pub async fn get_beacon_blocks_head(
@@ -193,7 +227,6 @@ pub fn beacon_finalized_blocks(
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(get_beacon_finalized_blocks)
-        .with(cors())
 }
 
 pub async fn get_beacon_finalized_blocks(
@@ -220,7 +253,6 @@ pub fn beacon_states(
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(get_beacon_states)
-        .with(cors())
 }
 
 pub async fn get_beacon_states(
@@ -244,7 +276,6 @@ pub fn beacon_finalized_checkpoint(
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(get_finalized_checkpoint)
-        .with(cors())
 }
 
 pub async fn get_finalized_checkpoint(
@@ -274,7 +305,6 @@ pub fn data_market_bid(
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(publish_bid)
-        .with(cors())
 }
 
 pub async fn publish_bid(
@@ -286,8 +316,12 @@ pub async fn publish_bid(
     log(&mut request_logs, String::from("POST /data_market/bid"));
     let mut simulator = simulator.lock().await;
     simulator.publish_bid(bid.clone());
-    Ok(warp::reply::json(&bid))
+    Ok(StatusCode::OK)
 }
+
+#[derive(Debug)]
+struct GivenSlotIsLowerThanAndEqualToCurrentSlot;
+impl reject::Reject for GivenSlotIsLowerThanAndEqualToCurrentSlot {}
 
 /// POST /simulator/slot/process/{slot_num}
 /// $ curl -X POST http://localhost:3030/simulator/slot/process/1
@@ -300,22 +334,24 @@ pub fn simulator_slot_process(
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(process_slots)
-        .with(cors())
 }
 
 pub async fn process_slots(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
         &mut request_logs,
         format!("POST /simulator/slot/process/{}", slot),
     );
     let mut simulator = simulator.lock().await;
-    simulator.process_slots_happy(slot);
-    Ok(warp::reply::json(&slot))
+    if simulator.process_slots_happy(slot).is_err() {
+        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
+    } else {
+        Ok(StatusCode::OK)
+    }
 }
 
 /// POST /simulator/slot/process_without_shard_data_inclusion/{slot_num}
@@ -331,14 +367,13 @@ pub fn simulator_slot_process_without_shard_data_inclusion(
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(process_slots_without_shard_data_inclusion)
-        .with(cors())
 }
 
 pub async fn process_slots_without_shard_data_inclusion(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
         &mut request_logs,
@@ -348,8 +383,14 @@ pub async fn process_slots_without_shard_data_inclusion(
         ),
     );
     let mut simulator = simulator.lock().await;
-    simulator.process_slots_without_shard_data_inclusion(slot);
-    Ok(warp::reply::json(&slot))
+    if simulator
+        .process_slots_without_shard_data_inclusion(slot)
+        .is_err()
+    {
+        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
+    } else {
+        Ok(StatusCode::OK)
+    }
 }
 
 /// POST /simulator/slot/process_without_shard_blob_proposal/{slot_num}
@@ -365,14 +406,13 @@ pub fn simulator_slot_process_without_shard_blob_proposal(
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(process_slots_without_shard_blob_proposal)
-        .with(cors())
 }
 
 pub async fn process_slots_without_shard_blob_proposal(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
         &mut request_logs,
@@ -382,8 +422,14 @@ pub async fn process_slots_without_shard_blob_proposal(
         ),
     );
     let mut simulator = simulator.lock().await;
-    simulator.process_slots_without_shard_blob_proposal(slot);
-    Ok(warp::reply::json(&slot))
+    if simulator
+        .process_slots_without_shard_blob_proposal(slot)
+        .is_err()
+    {
+        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
+    } else {
+        Ok(StatusCode::OK)
+    }
 }
 
 /// POST /simulator/slot/process_without_shard_header_inclusion/{slot_num}
@@ -399,14 +445,13 @@ pub fn simulator_slot_process_without_shard_header_inclusion(
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(process_slots_without_shard_header_inclusion)
-        .with(cors())
 }
 
 pub async fn process_slots_without_shard_header_inclusion(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
         &mut request_logs,
@@ -416,8 +461,14 @@ pub async fn process_slots_without_shard_header_inclusion(
         ),
     );
     let mut simulator = simulator.lock().await;
-    simulator.process_slots_without_shard_header_inclusion(slot);
-    Ok(warp::reply::json(&slot))
+    if simulator
+        .process_slots_without_shard_header_inclusion(slot)
+        .is_err()
+    {
+        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
+    } else {
+        Ok(StatusCode::OK)
+    }
 }
 
 /// POST /simulator/slot/process_without_shard_header_confirmation/{slot_num}
@@ -433,14 +484,13 @@ pub fn simulator_slot_process_without_shard_header_confirmation(
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(process_slots_without_shard_header_inclusion)
-        .with(cors())
 }
 
 pub async fn process_slots_without_shard_header_confirmation(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
         &mut request_logs,
@@ -450,8 +500,14 @@ pub async fn process_slots_without_shard_header_confirmation(
         ),
     );
     let mut simulator = simulator.lock().await;
-    simulator.process_slots_without_shard_header_confirmation(slot);
-    Ok(warp::reply::json(&slot))
+    if simulator
+        .process_slots_without_shard_header_confirmation(slot)
+        .is_err()
+    {
+        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
+    } else {
+        Ok(StatusCode::OK)
+    }
 }
 
 /// POST /simulator/slot/process_without_beacon_chain_finality/{slot_num}
@@ -467,14 +523,13 @@ pub fn simulator_slot_process_without_beacon_chain_finality(
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(process_slots_without_beacon_chain_finality)
-        .with(cors())
 }
 
 pub async fn process_slots_without_beacon_chain_finality(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
         &mut request_logs,
@@ -484,8 +539,14 @@ pub async fn process_slots_without_beacon_chain_finality(
         ),
     );
     let mut simulator = simulator.lock().await;
-    simulator.process_slots_without_beacon_chain_finality(slot);
-    Ok(warp::reply::json(&slot))
+    if simulator
+        .process_slots_without_beacon_chain_finality(slot)
+        .is_err()
+    {
+        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
+    } else {
+        Ok(StatusCode::OK)
+    }
 }
 
 /// POST /simulator/slot/process_without_beacon_block_proposal/{slot_num}
@@ -501,14 +562,13 @@ pub fn simulator_slot_process_without_beacon_block_proposal(
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(process_slots_without_beacon_block_proposal)
-        .with(cors())
 }
 
 pub async fn process_slots_without_beacon_block_proposal(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
         &mut request_logs,
@@ -518,8 +578,14 @@ pub async fn process_slots_without_beacon_block_proposal(
         ),
     );
     let mut simulator = simulator.lock().await;
-    simulator.process_slots_without_beacon_block_proposal(slot);
-    Ok(warp::reply::json(&slot))
+    if simulator
+        .process_slots_without_beacon_block_proposal(slot)
+        .is_err()
+    {
+        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
+    } else {
+        Ok(StatusCode::OK)
+    }
 }
 
 /// POST /simulator/slot/process_random/{slot_num}
@@ -533,22 +599,24 @@ pub fn simulator_slot_process_random(
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(process_slots_random)
-        .with(cors())
 }
 
 pub async fn process_slots_random(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
         &mut request_logs,
         format!("POST /simulator/slot/process_random/{}", slot),
     );
     let mut simulator = simulator.lock().await;
-    simulator.process_slots_random(slot);
-    Ok(warp::reply::json(&slot))
+    if simulator.process_slots_random(slot).is_err() {
+        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
+    } else {
+        Ok(StatusCode::OK)
+    }
 }
 
 /// GET /utils/data_commitment
@@ -560,7 +628,6 @@ pub fn utils_data_commitment(
         .and(warp::query::<UtilsDataCommitmentParams>())
         .and(with_request_logs(request_logs))
         .and_then(get_utils_data_commitment)
-        .with(cors())
 }
 
 #[derive(Deserialize)]
@@ -591,7 +658,6 @@ pub fn utils_request_logs(
         .and(warp::path!("utils" / "request_logs"))
         .and(with_request_logs(request_logs))
         .and_then(get_utils_request_logs)
-        .with(cors())
 }
 
 pub async fn get_utils_request_logs(
