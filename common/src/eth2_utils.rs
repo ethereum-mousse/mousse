@@ -1,15 +1,12 @@
 //! Utility functions in the Eth2 system
+use crate::eth2_config::{
+    GASPRICE_ADJUSTMENT_QUOTIENT, MAX_GASPRICE, MIN_GASPRICE, SLOTS_PER_EPOCH,
+    TARGET_SAMPLES_PER_BLOCK,
+};
+use crate::eth2_types::*;
 use std::cmp;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use crate::eth2_types::*;
-use crate::eth2_config::{
-    SLOTS_PER_EPOCH,
-    TARGET_SAMPLES_PER_BLOCK,
-    GASPRICE_ADJUSTMENT_QUOTIENT,
-    MAX_GASPRICE,
-    MIN_GASPRICE
-};
 
 /// Compute the epoch number at `slot`.
 pub fn compute_epoch_at_slot(slot: Slot) -> Epoch {
@@ -24,14 +21,21 @@ pub fn compute_start_slot_at_epoch(epoch: Epoch) -> Slot {
 /// Compute the updated gasprice.
 pub fn compute_updated_gasprice(prev_gasprice: Gwei, shard_block_length: u64) -> Gwei {
     if shard_block_length > TARGET_SAMPLES_PER_BLOCK {
-        let delta = cmp::max(1, prev_gasprice * (shard_block_length - TARGET_SAMPLES_PER_BLOCK)
-            / TARGET_SAMPLES_PER_BLOCK / GASPRICE_ADJUSTMENT_QUOTIENT);
-        return cmp::min(prev_gasprice + delta, MAX_GASPRICE)
-
+        let delta = cmp::max(
+            1,
+            prev_gasprice * (shard_block_length - TARGET_SAMPLES_PER_BLOCK)
+                / TARGET_SAMPLES_PER_BLOCK
+                / GASPRICE_ADJUSTMENT_QUOTIENT,
+        );
+        cmp::min(prev_gasprice + delta, MAX_GASPRICE)
     } else {
-        let delta = cmp::max(1, prev_gasprice * (TARGET_SAMPLES_PER_BLOCK - shard_block_length)
-            / TARGET_SAMPLES_PER_BLOCK / GASPRICE_ADJUSTMENT_QUOTIENT);
-        return cmp::max(prev_gasprice, MIN_GASPRICE + delta) - delta        
+        let delta = cmp::max(
+            1,
+            prev_gasprice * (TARGET_SAMPLES_PER_BLOCK - shard_block_length)
+                / TARGET_SAMPLES_PER_BLOCK
+                / GASPRICE_ADJUSTMENT_QUOTIENT,
+        );
+        cmp::max(prev_gasprice, MIN_GASPRICE + delta) - delta
     }
 }
 

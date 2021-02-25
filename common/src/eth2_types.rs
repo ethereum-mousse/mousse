@@ -68,6 +68,7 @@ impl Default for DataCommitment {
 impl DataCommitment {
     /// Generate a dummy commitment based on the data's hash.
     /// TODO: Use the real KZG commitment.
+    #[allow(clippy::ptr_arg)]
     pub fn dummy_from_bytes(bytes: &Vec<u8>) -> Self {
         let mut hash: u64 = calculate_hash(bytes);
         let mut dummy_sig: Vec<u8> = Vec::new();
@@ -82,7 +83,7 @@ impl DataCommitment {
         }
 
         Self {
-            point: point,
+            point,
             // Each point is 31 bytes.
             length: (bytes.len() as f64 / BYTES_PER_POINT as f64).ceil() as u64,
         }
@@ -122,7 +123,7 @@ impl SignedShardHeader {
         }
         Self {
             message: header,
-            signature: signature,
+            signature,
         }
     }
 }
@@ -229,7 +230,7 @@ impl BeaconState {
         Self {
             slot: GENESIS_SLOT,
             finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
-            previous_epoch_pending_shard_headers: VariableList::from(Vec::new()), 
+            previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
             current_epoch_pending_shard_headers: VariableList::from(Vec::new()),
             shard_gasprice: INIT_SHARD_GASPRICE,
         }
@@ -250,21 +251,30 @@ mod tests {
 
     #[test]
     fn calc_root() {
-        let signed_headers: Vec<SignedShardHeader> = (0..SHARD_NUM * 2).map(|num|{
-            SignedShardHeader::dummy_from_header(
-                ShardHeader {
+        let signed_headers: Vec<SignedShardHeader> = (0..SHARD_NUM * 2)
+            .map(|num| {
+                SignedShardHeader::dummy_from_header(ShardHeader {
                     slot: (num / SHARD_NUM) as Slot,
                     shard: (num % SHARD_NUM) as Shard,
-                    commitment: generate_dummy_from_string(&String::from(format!("Slot {}, Shard {}", num / SHARD_NUM, num % SHARD_NUM))),
-                })}).collect();
+                    commitment: generate_dummy_from_string(&String::from(format!(
+                        "Slot {}, Shard {}",
+                        num / SHARD_NUM,
+                        num % SHARD_NUM
+                    ))),
+                })
+            })
+            .collect();
         let state1 = BeaconState {
             slot: 0,
             finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
             previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
             current_epoch_pending_shard_headers: VariableList::from(
-                signed_headers[..SHARD_NUM as usize].iter().map(
-                    |signed_header| PendingShardHeader::from_signed_shard_header(signed_header)
-                ).collect::<Vec<PendingShardHeader>>()
+                signed_headers[..SHARD_NUM as usize]
+                    .iter()
+                    .map(|signed_header| {
+                        PendingShardHeader::from_signed_shard_header(signed_header)
+                    })
+                    .collect::<Vec<PendingShardHeader>>(),
             ),
             shard_gasprice: 0,
         };
@@ -279,9 +289,12 @@ mod tests {
             finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
             previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
             current_epoch_pending_shard_headers: VariableList::from(
-                signed_headers[SHARD_NUM as usize..].iter().map(
-                    |signed_header| PendingShardHeader::from_signed_shard_header(signed_header)
-                ).collect::<Vec<PendingShardHeader>>()
+                signed_headers[SHARD_NUM as usize..]
+                    .iter()
+                    .map(|signed_header| {
+                        PendingShardHeader::from_signed_shard_header(signed_header)
+                    })
+                    .collect::<Vec<PendingShardHeader>>(),
             ),
             shard_gasprice: 0,
         };
@@ -304,9 +317,12 @@ mod tests {
             finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
             previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
             current_epoch_pending_shard_headers: VariableList::from(
-                signed_headers[SHARD_NUM as usize..].iter().map(
-                    |signed_header| PendingShardHeader::from_signed_shard_header(signed_header)
-                ).collect::<Vec<PendingShardHeader>>()
+                signed_headers[SHARD_NUM as usize..]
+                    .iter()
+                    .map(|signed_header| {
+                        PendingShardHeader::from_signed_shard_header(signed_header)
+                    })
+                    .collect::<Vec<PendingShardHeader>>(),
             ),
             shard_gasprice: 0,
         };
@@ -318,7 +334,6 @@ mod tests {
         };
         assert_eq!(state2.root(), another_state2.root());
         assert_eq!(block2.header().root(), another_block2.header().root());
-
     }
 
     #[test]
@@ -333,12 +348,15 @@ mod tests {
     fn check_dummy_from_string(s: String) {
         let bytes = s.clone().into_bytes();
         let commitment = DataCommitment::dummy_from_bytes(&bytes);
-        assert_eq!((s.len() as f64 / BYTES_PER_POINT as f64).ceil() as u64, commitment.length);
+        assert_eq!(
+            (s.len() as f64 / BYTES_PER_POINT as f64).ceil() as u64,
+            commitment.length
+        );
     }
 
     fn generate_dummy_from_string(s: &String) -> DataCommitment {
         let bytes = s.clone().into_bytes();
-        return DataCommitment::dummy_from_bytes(&bytes)
+        return DataCommitment::dummy_from_bytes(&bytes);
     }
 
     fn compare_dummy_from_string(s1: String, s2: String) {

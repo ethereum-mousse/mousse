@@ -7,10 +7,10 @@ pub struct Shard {
     // Note: The last processed slot is `self.slot - 1`.
     pub slot: Slot,
     pub shard_id: ShardId,
-    // Published bids of each slot that are not selected by proposers yet. 
+    // Published bids of each slot that are not selected by proposers yet.
     pub bid_pool: Vec<Vec<Bid>>,
     // Proposed shard headers of each slot.
-    // Assumption: No equivocation. 
+    // Assumption: No equivocation.
     pub proposed_headers: Vec<Option<SignedShardHeader>>,
 }
 
@@ -18,7 +18,7 @@ impl Shard {
     pub fn new(shard_id: ShardId) -> Self {
         Shard {
             slot: GENESIS_SLOT,
-            shard_id: shard_id,
+            shard_id,
             bid_pool: Vec::new(),
             proposed_headers: Vec::new(),
         }
@@ -60,13 +60,11 @@ impl Shard {
             commitment = self.bid_pool[self.slot as usize].pop().unwrap().commitment;
         }
         // Note: For now, use dummy data to replace BLS signature.
-        self.proposed_headers.push(
-            Some(SignedShardHeader::dummy_from_header(
-                ShardHeader {
-                    slot: self.slot,
-                    shard: self.shard_id,
-                    commitment: commitment,
+        self.proposed_headers
+            .push(Some(SignedShardHeader::dummy_from_header(ShardHeader {
+                slot: self.slot,
+                shard: self.shard_id,
+                commitment,
             })));
-    } 
-
+    }
 }

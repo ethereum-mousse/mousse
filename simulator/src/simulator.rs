@@ -1,7 +1,7 @@
 use crate::*;
 use beacon_chain::*;
-use simulation_params::*;
 use errors::*;
+use simulation_params::*;
 
 /// Eth2 simulator.
 pub struct Simulator {
@@ -35,7 +35,10 @@ impl Simulator {
     }
 
     /// Process to the given slot. No data gets included in any shard.
-    pub fn process_slots_without_shard_data_inclusion(&mut self, slot: Slot) -> Result<(), SlotProcessingError> {
+    pub fn process_slots_without_shard_data_inclusion(
+        &mut self,
+        slot: Slot,
+    ) -> Result<(), SlotProcessingError> {
         while self.params.len() <= slot as usize {
             self.params
                 .push(SimulationParams::no_shard_data_inclusion());
@@ -44,7 +47,10 @@ impl Simulator {
     }
 
     /// Process to the given slot. No shard blob is proposed in any shard.
-    pub fn process_slots_without_shard_blob_proposal(&mut self, slot: Slot) -> Result<(), SlotProcessingError> {
+    pub fn process_slots_without_shard_blob_proposal(
+        &mut self,
+        slot: Slot,
+    ) -> Result<(), SlotProcessingError> {
         while self.params.len() <= slot as usize {
             self.params.push(SimulationParams::no_shard_blob_proposal());
         }
@@ -110,7 +116,10 @@ impl Simulator {
     /// Process to the given slot.
     fn process_slots(&mut self, slot: Slot) -> Result<(), SlotProcessingError> {
         if self.slot > slot {
-            return Err(SlotProcessingError::PastSlot{next: self.slot, found: slot});
+            return Err(SlotProcessingError::PastSlot {
+                next: self.slot,
+                found: slot,
+            });
         }
         while self.slot <= slot {
             self.process_slot();
@@ -118,7 +127,7 @@ impl Simulator {
             self.slot += 1;
         }
         assert_eq!(self.params.len(), self.slot as usize);
-        return Ok(());
+        Ok(())
     }
 
     /// Process of a slot.
@@ -140,13 +149,24 @@ impl Simulator {
     /// Submit a bid.
     pub fn publish_bid(&mut self, bid: Bid) -> Result<(), BidPublicationError> {
         if bid.commitment.length > MAX_POINTS_PER_BLOCK {
-            return Err(BidPublicationError::TooLargeData{found: bid.commitment.length});
+            return Err(BidPublicationError::TooLargeData {
+                found: bid.commitment.length,
+            });
         }
         if bid.slot < self.slot {
-            return Err(BidPublicationError::PastSlot{next: self.slot, found: bid.slot});
+            return Err(BidPublicationError::PastSlot {
+                next: self.slot,
+                found: bid.slot,
+            });
         }
         self.shards[bid.shard as usize].publish_bid(bid);
-        return Ok(());
+        Ok(())
+    }
+}
+
+impl Default for simulator::Simulator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -163,7 +183,10 @@ mod tests {
         // BeaconChain
         let beacon_chain = simulator.beacon_chain;
         assert_eq!(GENESIS_SLOT, beacon_chain.slot);
-        assert_eq!(Checkpoint::genesis_finalized_checkpoint(), beacon_chain.finalized_checkpoint);
+        assert_eq!(
+            Checkpoint::genesis_finalized_checkpoint(),
+            beacon_chain.finalized_checkpoint
+        );
         assert!(beacon_chain.blocks.is_empty());
         assert!(beacon_chain.states.is_empty());
         assert!(beacon_chain.previous_epoch_shard_header_pool.is_empty());

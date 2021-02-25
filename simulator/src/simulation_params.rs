@@ -141,7 +141,9 @@ impl SimulationParams {
     pub fn happy() -> Self {
         Self {
             beacon_params: BeaconSimulationParams::happy(),
-            shard_params: (0..SHARD_NUM).map(|_| ShardSimulationParams::happy()).collect(),
+            shard_params: (0..SHARD_NUM)
+                .map(|_| ShardSimulationParams::happy())
+                .collect(),
         }
     }
 
@@ -149,7 +151,9 @@ impl SimulationParams {
     pub fn all_failure() -> Self {
         Self {
             beacon_params: BeaconSimulationParams::all_failure(),
-            shard_params: (0..SHARD_NUM).map(|_| ShardSimulationParams::all_failure()).collect(),
+            shard_params: (0..SHARD_NUM)
+                .map(|_| ShardSimulationParams::all_failure())
+                .collect(),
         }
     }
 
@@ -157,7 +161,9 @@ impl SimulationParams {
     pub fn no_shard_data_inclusion() -> Self {
         Self {
             beacon_params: BeaconSimulationParams::happy(),
-            shard_params: (0..SHARD_NUM).map(|_| ShardSimulationParams::no_data_inclusion()).collect(),
+            shard_params: (0..SHARD_NUM)
+                .map(|_| ShardSimulationParams::no_data_inclusion())
+                .collect(),
         }
     }
 
@@ -165,7 +171,9 @@ impl SimulationParams {
     pub fn no_shard_blob_proposal() -> Self {
         Self {
             beacon_params: BeaconSimulationParams::happy(),
-            shard_params: (0..SHARD_NUM).map(|_| ShardSimulationParams::no_blob_proposal()).collect(),
+            shard_params: (0..SHARD_NUM)
+                .map(|_| ShardSimulationParams::no_blob_proposal())
+                .collect(),
         }
     }
 
@@ -173,7 +181,9 @@ impl SimulationParams {
     pub fn no_shard_header_inclusion() -> Self {
         Self {
             beacon_params: BeaconSimulationParams::no_shard_header_inclusion(),
-            shard_params: (0..SHARD_NUM).map(|_| ShardSimulationParams::happy()).collect(),
+            shard_params: (0..SHARD_NUM)
+                .map(|_| ShardSimulationParams::happy())
+                .collect(),
         }
     }
 
@@ -181,7 +191,9 @@ impl SimulationParams {
     pub fn no_shard_header_confirmation() -> Self {
         Self {
             beacon_params: BeaconSimulationParams::no_shard_header_confirmation(),
-            shard_params: (0..SHARD_NUM).map(|_| ShardSimulationParams::happy()).collect(),
+            shard_params: (0..SHARD_NUM)
+                .map(|_| ShardSimulationParams::happy())
+                .collect(),
         }
     }
 
@@ -189,7 +201,9 @@ impl SimulationParams {
     pub fn no_beacon_chain_finality() -> Self {
         Self {
             beacon_params: BeaconSimulationParams::no_chain_finality(),
-            shard_params: (0..SHARD_NUM).map(|_| ShardSimulationParams::happy()).collect(),
+            shard_params: (0..SHARD_NUM)
+                .map(|_| ShardSimulationParams::happy())
+                .collect(),
         }
     }
 
@@ -197,24 +211,25 @@ impl SimulationParams {
     pub fn no_beacon_block_proposal() -> Self {
         Self {
             beacon_params: BeaconSimulationParams::no_block_proposal(),
-            shard_params: (0..SHARD_NUM).map(|_| ShardSimulationParams::happy()).collect(),
+            shard_params: (0..SHARD_NUM)
+                .map(|_| ShardSimulationParams::happy())
+                .collect(),
         }
     }
-
 
     /// Fails randomly.
     pub fn random() -> Self {
         let rn: usize = rand::thread_rng().gen();
         match rn % 8 {
-            0 => return Self::happy(),
-            1 => return Self::all_failure(),
-            2 => return Self::no_shard_data_inclusion(),
-            3 => return Self::no_shard_blob_proposal(),
-            4 => return Self::no_shard_header_inclusion(),
-            5 => return Self::no_shard_header_confirmation(),
-            6 => return Self::no_beacon_chain_finality(),
-            7 => return Self::no_beacon_block_proposal(),
-            _ => return Self::happy(),
+            0 => Self::happy(),
+            1 => Self::all_failure(),
+            2 => Self::no_shard_data_inclusion(),
+            3 => Self::no_shard_blob_proposal(),
+            4 => Self::no_shard_header_inclusion(),
+            5 => Self::no_shard_header_confirmation(),
+            6 => Self::no_beacon_chain_finality(),
+            7 => Self::no_beacon_block_proposal(),
+            _ => Self::happy(),
         }
     }
 }
