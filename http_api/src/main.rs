@@ -148,18 +148,6 @@ async fn handle_rejection(err: reject::Rejection) -> Result<impl warp::Reply, In
     } else if let Some(GivenSlotIsLowerThanAndEqualToCurrentSlot) = err.find() {
         code = StatusCode::BAD_REQUEST;
         message = "BAD_REQUEST: The given slot <= the current slot.";
-    // } else if let Some(e) = err.find::<warp::filters::body::BodyDeserializeError>() {
-    //     message = match e.source() {
-    //         Some(cause) => {
-    //             if cause.to_string().contains("denom") {
-    //                 "FIELD_ERROR: denom"
-    //             } else {
-    //                 "BAD_REQUEST"
-    //             }
-    //         }
-    //         None => "BAD_REQUEST",
-    //     };
-    //     code = StatusCode::BAD_REQUEST;
     } else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
         code = StatusCode::METHOD_NOT_ALLOWED;
         message = "METHOD_NOT_ALLOWED";
