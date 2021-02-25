@@ -1,9 +1,7 @@
 #![allow(unused_must_use)]
-use base64;
 use chrono::prelude::*;
 use clap::{load_yaml, App};
 use eth2_simulator::simulator::Simulator;
-use pretty_env_logger;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -96,11 +94,11 @@ pub fn filters(
             request_logs.clone(),
         ))
         .or(simulator_slot_process_random(
-            simulator.clone(),
+            simulator,
             request_logs.clone(),
         ))
         .or(utils_data_commitment(request_logs.clone()))
-        .or(utils_request_logs(request_logs.clone()))
+        .or(utils_request_logs(request_logs))
 }
 
 fn with_simulator(
@@ -181,7 +179,7 @@ pub async fn get_beacon_blocks_head(
     // let mut request_logs = request_logs.lock().await;
     // log(&mut request_logs, String::from("GET /beacon/blocks/head"));
     let simulator = simulator.lock().await;
-    let head = simulator.beacon_chain.blocks.last().clone();
+    let head = simulator.beacon_chain.blocks.last();
     Ok(warp::reply::json(&head))
 }
 
@@ -579,8 +577,8 @@ pub async fn get_utils_data_commitment(
         &mut request_logs,
         String::from("GET /utils/data_commitment"),
     );
-    let base64string = params.data.unwrap_or(String::new());
-    let bytes = base64::decode(base64string).unwrap_or(vec![]);
+    let base64string = params.data.unwrap_or_default();
+    let bytes = base64::decode(base64string).unwrap_or_default();
     let dummy = DataCommitment::dummy_from_bytes(&bytes);
     Ok(warp::reply::json(&dummy))
 }
