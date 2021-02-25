@@ -1,5 +1,6 @@
 use eth2_simulator::*;
 use simulator::Simulator;
+use errors::*;
 
 #[test]
 fn process_slots_happy() {
@@ -182,7 +183,7 @@ fn process_slots_without_shard_data_inclusion() {
             assert!(result.is_ok());
         }
 
-        let result: Result<(), String>;
+        let result: Result<(), SlotProcessingError>;
         if processed_slot % 2 == 0 {
             result = simulator.process_slots_without_shard_data_inclusion(processed_slot);
             let included_commitments: HashSet<DataCommitment> = simulator.beacon_chain.blocks.last().unwrap()
@@ -221,7 +222,7 @@ fn publish_bids_without_shard_blob_proposal() {
             assert!(result.is_ok());
         }
 
-        let result: Result<(), String>;
+        let result: Result<(), SlotProcessingError>;
         if processed_slot % 2 == 0 {
             result = simulator.process_slots_without_shard_blob_proposal(processed_slot);
             for shard in simulator.shards.iter() {
@@ -251,7 +252,7 @@ fn grandparent_epoch_header_not_included() {
     let catastrophy_end_slot = compute_start_slot_at_epoch(5) - 1;
     for processed_slot in 0..end_slot + 1 {
         println!("Check the result of Slot {}", processed_slot);
-        let result: Result<(), String>;
+        let result: Result<(), SlotProcessingError>;
         if processed_slot < catastrophy_start_slot {
             result = simulator.process_slots_happy(processed_slot);
             assert!(simulator.beacon_chain.previous_epoch_shard_header_pool.is_empty());
@@ -292,7 +293,7 @@ fn process_slots_without_shard_header_inclusion() {
 
     for processed_slot in 0..end_slot + 1 {
         println!("Check the result of Slot {}", processed_slot);
-        let result: Result<(), String>;
+        let result: Result<(), SlotProcessingError>;
         if processed_slot % 2 == 0 {
             result = simulator.process_slots_without_shard_header_inclusion(processed_slot);
             assert!(simulator.beacon_chain.blocks.last().unwrap().shard_headers.is_empty());
@@ -311,7 +312,7 @@ fn process_slots_without_shard_header_confirmation() {
 
     for processed_slot in 0..end_slot + 1 {
         println!("Check the result of Slot {}", processed_slot);
-        let result: Result<(), String>;
+        let result: Result<(), SlotProcessingError>;
         if processed_slot % 2 == 0 {
             result = simulator.process_slots_without_shard_header_confirmation(processed_slot);
             assert_eq!(SHARD_NUM as usize, simulator.beacon_chain.states.last().unwrap().current_epoch_pending_shard_headers.iter()
@@ -332,7 +333,7 @@ fn process_slots_without_beacon_chain_finality() {
 
     for processed_slot in 0..end_slot + 1 {
         println!("Check the result of Slot {}", processed_slot);
-        let result: Result<(), String>;
+        let result: Result<(), SlotProcessingError>;
         let epoch = compute_epoch_at_slot(processed_slot);
         if epoch < 2 {
             continue;
@@ -355,7 +356,7 @@ fn process_slot_without_beacon_block_proposal() {
 
     for processed_slot in 0..end_slot + 1 {
         println!("Check the result of Slot {}", processed_slot);
-        let result: Result<(), String>;
+        let result: Result<(), SlotProcessingError>;
         if processed_slot % 2 == 0 {
             result = simulator.process_slots_without_beacon_block_proposal(processed_slot);
             if processed_slot == GENESIS_SLOT {
@@ -388,7 +389,7 @@ fn recovery_from_epoch_without_beacon_block_proposal() {
 
     for processed_slot in 0..end_slot + 1 {
         println!("Check the result of Slot {}", processed_slot);
-        let result: Result<(), String>;
+        let result: Result<(), SlotProcessingError>;
         if compute_epoch_at_slot(processed_slot) == catastrophic_epoch {
             // Catastrophic epoch without beacon block proposal
             result = simulator.process_slots_without_beacon_block_proposal(processed_slot);
@@ -502,4 +503,50 @@ fn process_slots_random() {
             assert_eq!(compute_epoch_at_slot(state.slot), compute_epoch_at_slot(header.slot));
         }    
     }
+}
+
+#[test]
+fn process_slot_validation() {
+    let mut simulator = Simulator::new();
+    let end_slot = 50;
+    let result = simulator.process_slots_happy(end_slot);
+    assert!(result.is_ok());
+
+    // Request past slot processing.
+    let result = simulator.process_slots_happy(GENESIS_SLOT);
+    assert_eq!(result, Err(SlotProcessingError::PastSlot{next: end_slot + 1, found: GENESIS_SLOT}));
+    let result = simulator.process_slots_happy(end_slot);
+    assert_eq!(result, Err(SlotProcessingError::PastSlot{next: end_slot + 1, found: end_slot}));
+}
+
+#[test]
+fn publish_bid_validation() {
+    let mut simulator = Simulator::new();
+    let end_slot = 50;
+    let result = simulator.process_slots_happy(end_slot);
+    assert!(result.is_ok());
+    
+    let good_bid = Bid {
+        shard: 0,
+        slot: end_slot + 1,
+        commitment: DataCommitment::dummy_from_bytes(&String::from("Test bid").into_bytes()),
+        fee: 1,
+    };
+    let result = simulator.publish_bid(good_bid.clone());
+    assert!(result.is_ok());
+
+    let mut old_bid1 = good_bid.clone();
+    old_bid1.slot = GENESIS_SLOT;
+    let result = simulator.publish_bid(old_bid1);
+    assert_eq!(result, Err(BidPublicationError::PastSlot{next: end_slot + 1, found: GENESIS_SLOT}));
+
+    let mut old_bid2 = good_bid.clone();
+    old_bid2.slot = end_slot;
+    let result = simulator.publish_bid(old_bid2);
+    assert_eq!(result, Err(BidPublicationError::PastSlot{next: end_slot + 1, found: end_slot}));
+
+    let mut large_bid = good_bid.clone();
+    large_bid.commitment.length = MAX_POINTS_PER_BLOCK + 1;
+    let result = simulator.publish_bid(large_bid);
+    assert_eq!(result, Err(BidPublicationError::TooLargeData{found: MAX_POINTS_PER_BLOCK + 1}));
 }
