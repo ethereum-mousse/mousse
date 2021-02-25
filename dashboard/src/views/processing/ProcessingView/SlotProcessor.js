@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import clsx from 'clsx';
 import {
@@ -46,8 +46,8 @@ const useStyles = makeStyles(({
 const SlotProcessor = ({ className, ...rest }) => {
   const classes = useStyles();
 
-  const [slot, setSlot] = React.useState(0);
-  const [slot_invalid, setSlotInvalid] = React.useState(0);
+  const [slot, setSlot] = useState(0);
+  const [slot_invalid, setSlotInvalid] = useState(false);
   const handleChangeSlot = (event) => {
     setSlot(event.target.value);
     if (event.target.value > rest.current_slot) {
@@ -58,7 +58,7 @@ const SlotProcessor = ({ className, ...rest }) => {
     }
   };
 
-  const [situation, setSituation] = React.useState('normal');
+  const [situation, setSituation] = useState('normal');
   const handleChangeSituation = (event) => {
     setSituation(event.target.value);
   };
