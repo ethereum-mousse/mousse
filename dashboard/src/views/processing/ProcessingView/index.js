@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -7,6 +7,7 @@ import {
 import Page from 'src/components/Page';
 import SlotProcessor from './SlotProcessor';
 import Bid from './Bid';
+import axios from 'axios';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -17,16 +18,32 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-const SettingsView = () => {
+const ProcessingView = () => {
   const classes = useStyles();
+
+  const [head, setHead] = useState(null);
+  const [current_slot, setCurrentSlot] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const result = await axios(
+        'http://localhost:3030/beacon/blocks/head'
+      );
+
+      setHead(result.data);
+      setCurrentSlot(result.data.slot);
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <Page
       className={classes.root}
-      title="Settings"
+      title="Processing"
     >
       <Container maxWidth="md">
-        <SlotProcessor />
+        <SlotProcessor current_slot={current_slot} setCurrentSlot={setCurrentSlot} />
         <Box mt={3}>
           <Bid />
         </Box>
@@ -35,4 +52,4 @@ const SettingsView = () => {
   );
 };
 
-export default SettingsView;
+export default ProcessingView;

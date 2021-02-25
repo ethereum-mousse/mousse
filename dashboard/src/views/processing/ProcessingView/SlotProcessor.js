@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import clsx from 'clsx';
 import {
@@ -46,21 +46,25 @@ const useStyles = makeStyles(({
 const SlotProcessor = ({ className, ...rest }) => {
   const classes = useStyles();
 
-  const [slot, setSlot] = React.useState(0);
+  const [slot, setSlot] = useState(0);
+  const [slot_invalid, setSlotInvalid] = useState(false);
   const handleChangeSlot = (event) => {
     setSlot(event.target.value);
+    if (event.target.value > rest.current_slot) {
+      setSlotInvalid(false);
+    }
+    else {
+      setSlotInvalid(true);
+    }
   };
 
-  const [situation, setSituation] = React.useState('normal');
+  const [situation, setSituation] = useState('normal');
   const handleChangeSituation = (event) => {
     setSituation(event.target.value);
   };
 
   const handleSubmit = event => {
     event.preventDefault();
-
-    console.log(slot);
-    console.log(situation);
 
     const situation_to_endpoint = {
       "normal": "process",
@@ -81,9 +85,17 @@ const SlotProcessor = ({ className, ...rest }) => {
     fetch(endpoint, {
       method: "POST",
     })
-      .then(response => console.log(response))
-      // .then(response => response.json())
-      // .then(response => console.log("Success:", JSON.stringify(response)))
+      .then(response => {
+        if (response.status === 200) {
+          console.log("Success");
+          rest.setCurrentSlot(slot);
+        }
+        else {
+          response.json().then(() => {
+            console.log("Error:", JSON.stringify(response));
+          })
+        }
+      })
       .catch(error => console.error("Error:", error));
   };
 
@@ -112,14 +124,27 @@ const SlotProcessor = ({ className, ...rest }) => {
               sm={6}
               xs={6}
             >
-              <TextField
-                id="slot"
-                label="Slot"
-                placeholder="0"
-                margin="normal"
-                onChange={handleChangeSlot}
-                variant="outlined"
-              />
+              {slot_invalid ?
+                <TextField
+                  error
+                  id="slot"
+                  label="Slot"
+                  placeholder="0"
+                  margin="normal"
+                  onChange={handleChangeSlot}
+                  variant="outlined"
+                  helperText="Invalid slot."
+                />
+                :
+                <TextField
+                  id="slot"
+                  label="Slot"
+                  placeholder="0"
+                  margin="normal"
+                  onChange={handleChangeSlot}
+                  variant="outlined"
+                />
+              }
             </Grid>
             <Grid
               className={classes.item}
