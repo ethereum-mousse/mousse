@@ -148,7 +148,7 @@ async fn handle_rejection(err: reject::Rejection) -> Result<impl warp::Reply, In
     } else if let Some(GivenSlotIsLowerThanAndEqualToCurrentSlot) = err.find() {
         code = StatusCode::BAD_REQUEST;
         message = "BAD_REQUEST: The given slot <= the current slot.";
-    } else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
+    } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
         code = StatusCode::METHOD_NOT_ALLOWED;
         message = "METHOD_NOT_ALLOWED";
     } else {

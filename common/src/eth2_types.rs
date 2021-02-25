@@ -356,7 +356,7 @@ mod tests {
 
     fn generate_dummy_from_string(s: &String) -> DataCommitment {
         let bytes = s.clone().into_bytes();
-        return DataCommitment::dummy_from_bytes(&bytes);
+        DataCommitment::dummy_from_bytes(&bytes)
     }
 
     fn compare_dummy_from_string(s1: String, s2: String) {
