@@ -89,6 +89,7 @@ const SlotProcessor = ({ className, ...rest }) => {
         if (response.status === 200) {
           console.log("Success");
           rest.setCurrentSlot(slot);
+          rest.setSuccessOpen(true);
         }
         else {
           response.json().then(() => {
