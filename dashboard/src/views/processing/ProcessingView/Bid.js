@@ -166,6 +166,7 @@ const Bid = ({ className, ...rest }) => {
                 <FormLabel component="legend">Block Info</FormLabel>
                 <TextField
                   label="Shard"
+                  type="number"
                   margin="normal"
                   padding="normal"
                   name="shard"
@@ -176,6 +177,7 @@ const Bid = ({ className, ...rest }) => {
                 />
                 <TextField
                   label="Slot"
+                  type="number"
                   margin="normal"
                   padding="normal"
                   name="slot"

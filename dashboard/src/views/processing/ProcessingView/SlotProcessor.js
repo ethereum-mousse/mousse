@@ -129,6 +129,7 @@ const SlotProcessor = ({ className, ...rest }) => {
                 <TextField
                   error
                   id="slot"
+                  type="number"
                   label="Slot"
                   placeholder="0"
                   margin="normal"
@@ -139,6 +140,7 @@ const SlotProcessor = ({ className, ...rest }) => {
                 :
                 <TextField
                   id="slot"
+                  type="number"
                   label="Slot"
                   placeholder="0"
                   margin="normal"
