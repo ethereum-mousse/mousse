@@ -7,6 +7,7 @@ import {
 import Page from 'src/components/Page';
 import SlotProcessor from './SlotProcessor';
 import Bid from './Bid';
+import SuccessDialog from './SuccessDialog';
 import axios from 'axios';
 
 const useStyles = makeStyles((theme) => ({
@@ -23,6 +24,8 @@ const ProcessingView = () => {
 
   const [head, setHead] = useState(null);
   const [current_slot, setCurrentSlot] = useState(null);
+
+  const [success_open, setSuccessOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -43,12 +46,13 @@ const ProcessingView = () => {
       title="Processing"
     >
       <Container maxWidth="md">
-        <SlotProcessor current_slot={current_slot} setCurrentSlot={setCurrentSlot} />
+        <SlotProcessor current_slot={current_slot} setCurrentSlot={setCurrentSlot} setSuccessOpen={setSuccessOpen} />
         <Box mt={3}>
-          <Bid />
+          <Bid setSuccessOpen={setSuccessOpen} />
         </Box>
       </Container>
-    </Page>
+      <SuccessDialog success_open={success_open} setSuccessOpen={setSuccessOpen} />
+    </Page >
   );
 };
 

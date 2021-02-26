@@ -126,7 +126,17 @@ const Bid = ({ className, ...rest }) => {
         "Content-Type": "application/json"
       }
     })
-      .then(response => console.log(response))
+      .then(response => {
+        if (response.status === 200) {
+          console.log("Success");
+          rest.setSuccessOpen(true);
+        }
+        else {
+          response.json().then(() => {
+            console.log("Error:", JSON.stringify(response));
+          })
+        }
+      })
       .catch(error => console.error("Error:", error));
   };
 
