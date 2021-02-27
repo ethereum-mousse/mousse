@@ -1,6 +1,6 @@
 use crate::*;
 use beacon_chain::*;
-use errors::*;
+pub use errors::*;
 use simulation_params::*;
 
 /// Eth2 simulator.

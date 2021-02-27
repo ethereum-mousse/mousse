@@ -1,6 +1,7 @@
 #![allow(unused_must_use)]
 use chrono::prelude::*;
 use clap::{load_yaml, App};
+use eth2_simulator::simulator;
 use eth2_simulator::simulator::Simulator;
 use rand::prelude::*;
 use serde_derive::{Deserialize, Serialize};
@@ -64,6 +65,12 @@ async fn main() {
         println!("Simulator started in manual mode.");
         Arc::new(Mutex::new(Simulator::new()))
     };
+
+    // Genesis
+    {
+        let mut simulator = simulator.lock().await;
+        simulator.process_slots_happy(0);
+    }
 
     let request_logs = Arc::new(Mutex::new(Vec::<RequestLog>::new()));
 
@@ -199,25 +206,46 @@ async fn handle_rejection(err: reject::Rejection) -> Result<impl warp::Reply, In
 
     if err.is_not_found() {
         code = StatusCode::NOT_FOUND;
-        message = "NOT_FOUND";
-    } else if let Some(GivenSlotIsLowerThanAndEqualToCurrentSlot) = err.find() {
+        message = "NOT_FOUND".into();
+    } else if let Some(e) = err.find::<SlotProcessingError>() {
         code = StatusCode::BAD_REQUEST;
-        message = "BAD_REQUEST: The given slot <= the current slot.";
+        message = format!("BAD_REQUEST: {:?}", e);
+    } else if let Some(e) = err.find::<BidPublicationError>() {
+        code = StatusCode::BAD_REQUEST;
+        message = format!("BAD_REQUEST: {:?}", e);
     } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
         code = StatusCode::METHOD_NOT_ALLOWED;
-        message = "METHOD_NOT_ALLOWED";
+        message = "METHOD_NOT_ALLOWED".into();
     } else {
         eprintln!("unhandled rejection: {:?}", err);
         code = StatusCode::INTERNAL_SERVER_ERROR;
-        message = "UNHANDLED_REJECTION";
+        message = "UNHANDLED_REJECTION".into();
     }
 
     let json = warp::reply::json(&ErrorMessage {
         code: code.as_u16(),
-        message: message.into(),
+        message,
     });
 
     Ok(warp::reply::with_status(json, code))
+}
+
+#[derive(Debug)]
+pub struct SlotProcessingError(pub simulator::SlotProcessingError);
+
+impl reject::Reject for SlotProcessingError {}
+
+pub fn slot_processing_error(e: simulator::SlotProcessingError) -> reject::Rejection {
+    warp::reject::custom(SlotProcessingError(e))
+}
+
+#[derive(Debug)]
+pub struct BidPublicationError(pub simulator::BidPublicationError);
+
+impl reject::Reject for BidPublicationError {}
+
+pub fn bid_publication_error(e: simulator::BidPublicationError) -> reject::Rejection {
+    reject::custom(BidPublicationError(e))
 }
 
 /// GET /
@@ -443,15 +471,17 @@ pub async fn publish_bid_with_data(
     bid_with_data: BidWithData,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
         &mut request_logs,
         String::from("POST /shards/{shard}/bid_with_data"),
     );
     let mut simulator = simulator.lock().await;
-    simulator.publish_bid(bid_with_data.bid.clone());
-    Ok(StatusCode::OK)
+    match simulator.publish_bid(bid_with_data.bid.clone()) {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err(bid_publication_error(e)),
+    }
 }
 
 /// POST /simulator/init
@@ -478,10 +508,6 @@ pub async fn init_simulator(
     Ok(StatusCode::OK)
 }
 
-#[derive(Debug)]
-struct GivenSlotIsLowerThanAndEqualToCurrentSlot;
-impl reject::Reject for GivenSlotIsLowerThanAndEqualToCurrentSlot {}
-
 /// POST /simulator/slot/process/{slot_num}
 /// $ curl -X POST http://localhost:3030/simulator/slot/process/1
 pub fn simulator_slot_process(
@@ -506,10 +532,9 @@ pub async fn process_slots(
         format!("POST /simulator/slot/process/{}", slot),
     );
     let mut simulator = simulator.lock().await;
-    if simulator.process_slots_happy(slot).is_err() {
-        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
-    } else {
-        Ok(StatusCode::OK)
+    match simulator.process_slots_happy(slot) {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err(slot_processing_error(e)),
     }
 }
 
@@ -542,13 +567,9 @@ pub async fn process_slots_without_shard_data_inclusion(
         ),
     );
     let mut simulator = simulator.lock().await;
-    if simulator
-        .process_slots_without_shard_data_inclusion(slot)
-        .is_err()
-    {
-        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
-    } else {
-        Ok(StatusCode::OK)
+    match simulator.process_slots_without_shard_data_inclusion(slot) {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err(slot_processing_error(e)),
     }
 }
 
@@ -581,13 +602,9 @@ pub async fn process_slots_without_shard_blob_proposal(
         ),
     );
     let mut simulator = simulator.lock().await;
-    if simulator
-        .process_slots_without_shard_blob_proposal(slot)
-        .is_err()
-    {
-        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
-    } else {
-        Ok(StatusCode::OK)
+    match simulator.process_slots_without_shard_blob_proposal(slot) {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err(slot_processing_error(e)),
     }
 }
 
@@ -620,13 +637,9 @@ pub async fn process_slots_without_shard_header_inclusion(
         ),
     );
     let mut simulator = simulator.lock().await;
-    if simulator
-        .process_slots_without_shard_header_inclusion(slot)
-        .is_err()
-    {
-        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
-    } else {
-        Ok(StatusCode::OK)
+    match simulator.process_slots_without_shard_header_inclusion(slot) {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err(slot_processing_error(e)),
     }
 }
 
@@ -659,13 +672,9 @@ pub async fn process_slots_without_shard_header_confirmation(
         ),
     );
     let mut simulator = simulator.lock().await;
-    if simulator
-        .process_slots_without_shard_header_confirmation(slot)
-        .is_err()
-    {
-        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
-    } else {
-        Ok(StatusCode::OK)
+    match simulator.process_slots_without_shard_header_confirmation(slot) {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err(slot_processing_error(e)),
     }
 }
 
@@ -698,13 +707,9 @@ pub async fn process_slots_without_beacon_chain_finality(
         ),
     );
     let mut simulator = simulator.lock().await;
-    if simulator
-        .process_slots_without_beacon_chain_finality(slot)
-        .is_err()
-    {
-        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
-    } else {
-        Ok(StatusCode::OK)
+    match simulator.process_slots_without_beacon_chain_finality(slot) {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err(slot_processing_error(e)),
     }
 }
 
@@ -737,13 +742,9 @@ pub async fn process_slots_without_beacon_block_proposal(
         ),
     );
     let mut simulator = simulator.lock().await;
-    if simulator
-        .process_slots_without_beacon_block_proposal(slot)
-        .is_err()
-    {
-        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
-    } else {
-        Ok(StatusCode::OK)
+    match simulator.process_slots_without_beacon_block_proposal(slot) {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err(slot_processing_error(e)),
     }
 }
 
@@ -771,10 +772,9 @@ pub async fn process_slots_random(
         format!("POST /simulator/slot/process_random/{}", slot),
     );
     let mut simulator = simulator.lock().await;
-    if simulator.process_slots_random(slot).is_err() {
-        Err(reject::custom(GivenSlotIsLowerThanAndEqualToCurrentSlot))
-    } else {
-        Ok(StatusCode::OK)
+    match simulator.process_slots_random(slot) {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(e) => Err(slot_processing_error(e)),
     }
 }
 
