@@ -99,6 +99,7 @@ const Server = ({ className, ...rest }) => {
             color="primary"
             variant="contained"
             type="submit"
+            disabled
           >
             Save
           </Button>
