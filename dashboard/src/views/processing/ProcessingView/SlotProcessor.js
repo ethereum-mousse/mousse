@@ -50,7 +50,7 @@ const SlotProcessor = ({ className, ...rest }) => {
   const [slot_invalid, setSlotInvalid] = useState(false);
   const handleChangeSlot = (event) => {
     setSlot(event.target.value);
-    if (event.target.value > rest.current_slot) {
+    if (rest.current_slot === null || event.target.value > rest.current_slot) {
       setSlotInvalid(false);
     }
     else {
