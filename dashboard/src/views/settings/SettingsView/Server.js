@@ -33,17 +33,20 @@ const Server = ({ className, ...rest }) => {
 
   const [state, setState] = React.useState({
     auto_mining: false,
-    jason: false,
-    antoine: true,
   });
 
   const handleChange = (event) => {
     setState({ ...state, [event.target.name]: event.target.checked });
   };
 
+  const handleSubmit = event => {
+    event.preventDefault();
+  };
+
   return (
     <form
       className={clsx(classes.root, className)}
+      onSubmit={handleSubmit}
       {...rest}
     >
       <Card>
@@ -65,35 +68,6 @@ const Server = ({ className, ...rest }) => {
               sm={6}
               xs={6}
             >
-              <Typography
-                color="textPrimary"
-                gutterBottom
-                variant="h6"
-              >
-                Server
-              </Typography>
-              <TextField
-                id="hostname"
-                label="Hostname"
-                value="http://localhost"
-                disabled
-                margin="normal"
-              />
-              <TextField
-                id="port"
-                label="Port Number"
-                value="3030"
-                disabled
-                margin="normal"
-              />
-            </Grid>
-            <Grid
-              className={classes.item}
-              item
-              md={6}
-              sm={6}
-              xs={6}
-            >
 
               <Typography
                 color="textPrimary"
@@ -108,6 +82,7 @@ const Server = ({ className, ...rest }) => {
                   <FormControlLabel
                     control={<Switch checked={state.auto_mining} onChange={handleChange} name="gilad" />}
                     label="Auto Mining"
+                    disabled
                   />
                 </FormGroup>
               </FormControl>
@@ -123,6 +98,7 @@ const Server = ({ className, ...rest }) => {
           <Button
             color="primary"
             variant="contained"
+            type="submit"
           >
             Save
           </Button>
