@@ -26,9 +26,9 @@ pub type Gwei = u64;
 /// H256.
 pub type Root = H256;
 /// [u8; 96].
-pub type BLSSignature = [u8; BLS_SIGNATURE_BYTE_LEN];
+pub type BlsSignature = [u8; BLS_SIGNATURE_BYTE_LEN];
 /// [u8; 48].
-pub type BLSCommitment = [u8; BLS_COMMITMENT_BYTE_LEN];
+pub type BlsCommitment = [u8; BLS_COMMITMENT_BYTE_LEN];
 /// U256.
 /// Call this `FieldElement` instead of `BLSPoint`.
 /// Ref: https://github.com/ethereum/eth2.0-specs/pull/2172#discussion_r550884186
@@ -52,7 +52,7 @@ impl Checkpoint {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]
 pub struct DataCommitment {
     #[serde(with = "BigArray")]
-    pub point: BLSCommitment,
+    pub point: BlsCommitment,
     pub length: u64,
 }
 
@@ -101,7 +101,7 @@ pub struct ShardHeader {
 pub struct SignedShardHeader {
     pub message: ShardHeader,
     #[serde(with = "BigArray")]
-    pub signature: BLSSignature,
+    pub signature: BlsSignature,
 }
 
 impl SignedShardHeader {
