@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Box,
   Container,
@@ -7,8 +7,7 @@ import {
 } from '@material-ui/core';
 import Page from 'src/components/Page';
 import Results from './Results';
-// import Toolbar from './Toolbar';
-import axios from 'axios';
+import { CurrentSlotContext } from 'src/contexts/CurrentSlotContext';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -21,20 +20,6 @@ const useStyles = makeStyles((theme) => ({
 
 const BlockListView = () => {
   const classes = useStyles();
-  const [blocks, setBlocks] = useState([]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const result = await axios(
-        'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/beacon/blocks'
-      );
-
-      let blocks = result.data;
-      setBlocks(blocks);
-    };
-
-    fetchData();
-  }, []);
 
   return (
     <Page
@@ -45,7 +30,11 @@ const BlockListView = () => {
         <Container maxWidth={false}>
           {/* <Toolbar /> */}
           <Box mt={3}>
-            <Results blocks={blocks} />
+            <CurrentSlotContext.Consumer>
+              {value => (
+                <Results current_slot={value.current_slot} />
+              )}
+            </CurrentSlotContext.Consumer>
           </Box>
         </Container>
       </Grid>

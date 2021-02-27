@@ -51,7 +51,7 @@ const useStyles = makeStyles(({
 const SlotProcessor = ({ className, ...rest }) => {
   const classes = useStyles();
 
-  const [slot, setSlot] = useState(0);
+  const [slot, setSlot] = useState(rest.current_slot);
   const [slot_invalid, setSlotInvalid] = useState(false);
   const handleChangeSlot = (event) => {
     setSlot(event.target.value);
@@ -162,6 +162,7 @@ const SlotProcessor = ({ className, ...rest }) => {
                   onChange={handleChangeSlot}
                   variant="outlined"
                   helperText="Invalid slot."
+                  value={slot}
                 />
                 :
                 <TextField
@@ -172,6 +173,7 @@ const SlotProcessor = ({ className, ...rest }) => {
                   margin="normal"
                   onChange={handleChangeSlot}
                   variant="outlined"
+                  value={slot}
                 />
               }
             </Grid>

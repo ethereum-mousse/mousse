@@ -53,7 +53,7 @@ const Bid = ({ className, ...rest }) => {
     setShard(event.target.value);
   };
 
-  const [slot, setSlot] = useState(0);
+  const [slot, setSlot] = useState(rest.current_slot);
   const handleChangeSlot = (event) => {
     setSlot(event.target.value);
   };
@@ -183,7 +183,6 @@ const Bid = ({ className, ...rest }) => {
                   name="shard"
                   onChange={handleChangeShard}
                   variant="outlined"
-                  placeholder="0"
                   value={shard}
                 />
                 <TextField
@@ -194,7 +193,6 @@ const Bid = ({ className, ...rest }) => {
                   name="slot"
                   onChange={handleChangeSlot}
                   variant="outlined"
-                  placeholder="0"
                   value={slot}
                 />
                 <TextField
@@ -203,7 +201,6 @@ const Bid = ({ className, ...rest }) => {
                   name="fee"
                   onChange={handleChangeFee}
                   variant="outlined"
-                  placeholder="0"
                   value={fee}
                 />
               </FormControl>

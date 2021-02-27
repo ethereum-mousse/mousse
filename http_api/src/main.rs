@@ -226,6 +226,12 @@ pub fn root() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection
     warp::get().and(warp::path::end().map(|| "root"))
 }
 
+#[derive(Deserialize)]
+pub struct CountAndPageParams {
+    count: Option<Slot>,
+    page: Option<usize>,
+}
+
 /// GET /beacon/blocks
 pub fn beacon_blocks(
     simulator: SharedSimulator,
@@ -233,19 +239,37 @@ pub fn beacon_blocks(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path!("beacon" / "blocks"))
+        .and(warp::query::<CountAndPageParams>())
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(get_beacon_blocks)
 }
 
 pub async fn get_beacon_blocks(
+    params: CountAndPageParams,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
 ) -> Result<impl warp::Reply, Infallible> {
     let mut request_logs = request_logs.lock().await;
     log(&mut request_logs, String::from("GET /beacon/blocks"));
     let simulator = simulator.lock().await;
-    let beacon_blocks = simulator.beacon_chain.blocks.clone();
+    let count = params.count.unwrap_or(100);
+    let beacon_blocks = if simulator.beacon_chain.blocks.len() < count as usize {
+        simulator.beacon_chain.blocks.clone()
+    } else {
+        let page = params.page.unwrap_or(0);
+        let last_slot = simulator.beacon_chain.blocks.last().unwrap().slot;
+        simulator
+            .beacon_chain
+            .blocks
+            .iter()
+            .filter(|block| {
+                last_slot < block.slot + count * (page + 1) as Slot
+                    && block.slot + count * page as Slot <= last_slot
+            })
+            .cloned()
+            .collect::<Vec<_>>()
+    };
     Ok(warp::reply::json(&beacon_blocks))
 }
 
@@ -305,19 +329,37 @@ pub fn beacon_states(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path!("beacon" / "states"))
+        .and(warp::query::<CountAndPageParams>())
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(get_beacon_states)
 }
 
 pub async fn get_beacon_states(
+    params: CountAndPageParams,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
 ) -> Result<impl warp::Reply, Infallible> {
     let mut request_logs = request_logs.lock().await;
     log(&mut request_logs, String::from("GET /beacon/states"));
     let simulator = simulator.lock().await;
-    let beacon_states = simulator.beacon_chain.states.clone();
+    let count = params.count.unwrap_or(100);
+    let beacon_states = if simulator.beacon_chain.states.len() < count as usize {
+        simulator.beacon_chain.states.clone()
+    } else {
+        let page = params.page.unwrap_or(0);
+        let last_slot = simulator.beacon_chain.states.last().unwrap().slot;
+        simulator
+            .beacon_chain
+            .states
+            .iter()
+            .filter(|state| {
+                last_slot < state.slot + count * (page + 1) as Slot
+                    && state.slot + count * page as Slot <= last_slot
+            })
+            .cloned()
+            .collect::<Vec<_>>()
+    };
     Ok(warp::reply::json(&beacon_states))
 }
 

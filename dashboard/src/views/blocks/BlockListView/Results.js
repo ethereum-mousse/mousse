@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import PropTypes from 'prop-types';
 // import moment from 'moment';
@@ -43,11 +43,40 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-const Results = ({ className, blocks, ...rest }) => {
+const Results = ({ className, ...rest }) => {
   const classes = useStyles();
+
+  const [blocks, setBlocks] = useState([]);
+
   const [openedBlockIds, setOpenedBlockIds] = useState(new Set());
-  const [limit, setLimit] = useState(10);
+  const [count, setCount] = useState(10);
   const [page, setPage] = useState(0);
+  const [updating, setUpdating] = useState(true);
+
+  useEffect(() => {
+    updateBlocks(count, page);
+  }, []);
+
+  const updateBlocks = (count, page) => {
+    setUpdating(true);
+    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/beacon/blocks";
+    let url = new URL(endpoint);
+    let params = {
+      count: count,
+      page: page,
+    };
+
+    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+    fetch(url, {
+      method: "GET",
+    })
+      .then(response => response.json())
+      .then(blocks => {
+        setBlocks(blocks);
+        setUpdating(false);
+      })
+      .catch(error => console.error("Error:", error));
+  }
 
   const handleOpenBlock = (id) => {
     let newOpenedBlockIds = new Set(openedBlockIds);
@@ -59,16 +88,19 @@ const Results = ({ className, blocks, ...rest }) => {
     setOpenedBlockIds(newOpenedBlockIds);
   }
 
-  const handleLimitChange = (event) => {
-    setLimit(event.target.value);
+  const handleCountChange = (event) => {
+    let count = event.target.value;
+    setCount(count);
+    updateBlocks(count, page);
   };
 
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
+    updateBlocks(count, newPage);
   };
 
   const blockColorClassName = block => {
-    if (block.state_root == null || block.shard_headers.length === 0) {
+    if (!updating && (block.state_root === null || block.shard_headers.length === 0)) {
       return classes.table_row_red;
     }
     else {
@@ -79,7 +111,9 @@ const Results = ({ className, blocks, ...rest }) => {
   let slot_to_block = [];
   if (blocks.length > 0) {
     let block_id = 0;
-    for (let slot = 0; slot <= blocks[blocks.length - 1].slot; slot++) {
+    let min_slot = Math.max(0, rest.current_slot - (page + 1) * count + 1);
+    let max_slot = rest.current_slot - page * count;
+    for (let slot = min_slot; slot <= max_slot; slot++) {
       if (slot === blocks[block_id].slot) {
         slot_to_block.push(blocks[block_id]);
         block_id += 1;
@@ -123,7 +157,7 @@ const Results = ({ className, blocks, ...rest }) => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {slot_to_block_rev.slice(page * limit, (page + 1) * limit).map((block, index) => (
+              {slot_to_block_rev.slice(0, count).map((block, index) => (
                 <React.Fragment
                   key={index}>
                   <TableRow
@@ -197,11 +231,11 @@ const Results = ({ className, blocks, ...rest }) => {
       </PerfectScrollbar>
       <TablePagination
         component="div"
-        count={blocks.length}
+        count={rest.current_slot}
         onChangePage={handlePageChange}
-        onChangeRowsPerPage={handleLimitChange}
+        onChangeRowsPerPage={handleCountChange}
         page={page}
-        rowsPerPage={limit}
+        rowsPerPage={count}
         rowsPerPageOptions={[5, 10, 25, 50, 100]}
       />
     </Card >
