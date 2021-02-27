@@ -53,7 +53,7 @@ const Bid = ({ className, ...rest }) => {
     setShard(event.target.value);
   };
 
-  const [slot, setSlot] = useState(rest.current_slot);
+  const [slot, setSlot] = useState(rest.current_slot + 1);
   const handleChangeSlot = (event) => {
     setSlot(event.target.value);
   };
