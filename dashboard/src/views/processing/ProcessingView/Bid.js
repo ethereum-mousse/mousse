@@ -14,6 +14,7 @@ import {
   IconButton,
   FormControl,
   FormLabel,
+  FormHelperText,
 } from '@material-ui/core';
 import InsertDriveFile from '@material-ui/icons/InsertDriveFile';
 import bytesToHex from 'src/utils/bytesToHex';
@@ -79,17 +80,20 @@ const Bid = ({ className, ...rest }) => {
     reader.onerror = error => reject(error);
   });
 
-  const [file, setFile] = React.useState();
+  const [filename, setFilename] = useState("");
+
+  const [encoded_file, setEncodedFile] = useState();
   const handleChangeFile = async (event) => {
     if (event.target.files.length == 0) {
       return;
     }
-    let file = await toBase64(event.target.files[0]);
-    setFile(file);
+    setFilename(event.target.files[0].name);
+    let encoded_file = await toBase64(event.target.files[0]);
+    setEncodedFile(encoded_file);
 
     let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/utils/data_commitment";
     let body = JSON.stringify({
-      data: file
+      data: encoded_file
     });
 
     fetch(endpoint, {
@@ -216,6 +220,8 @@ const Bid = ({ className, ...rest }) => {
                   variant="outlined"
                   placeholder="0x0"
                   value={point}
+                  disabled
+                  helperText="Automatically calculated from a file."
                 />
                 <TextField
                   fullWidth
@@ -226,6 +232,8 @@ const Bid = ({ className, ...rest }) => {
                   variant="outlined"
                   placeholder="0"
                   value={length}
+                  disabled
+                  helperText="Automatically calculated from a file."
                 />
               </FormControl>
 
@@ -235,7 +243,6 @@ const Bid = ({ className, ...rest }) => {
                 <input
                   className={classes.input}
                   id="contained-button-file"
-                  // multiple
                   type="file"
                   onChange={handleChangeFile}
                 />
@@ -244,12 +251,18 @@ const Bid = ({ className, ...rest }) => {
                     SELECT FILE
                   </Button>
                 </label>
-                <input accept="image/*" className={classes.input} id="icon-button-file" type="file" />
+                <input
+                  className={classes.input}
+                  id="icon-button-file"
+                  type="file"
+                  onChange={handleChangeFile}
+                />
                 <label htmlFor="icon-button-file">
                   <IconButton color="primary" aria-label="upload picture" component="span">
                     <InsertDriveFile />
                   </IconButton>
                 </label>
+                <FormHelperText>{filename}</FormHelperText>
               </Box>
             </Grid>
           </Grid>
