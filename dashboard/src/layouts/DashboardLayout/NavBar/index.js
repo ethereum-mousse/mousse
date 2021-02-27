@@ -23,6 +23,11 @@ const items = [
     title: 'Blocks'
   },
   {
+    href: '/app/finalized_blocks',
+    icon: BlockIcon,
+    title: 'Finalized Blocks'
+  },
+  {
     href: '/app/processing',
     icon: ProcessingIcon,
     title: 'Processing'
