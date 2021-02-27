@@ -36,18 +36,15 @@ async fn main() {
     let yaml = load_yaml!("cli.yaml");
     let matches = App::from(yaml).get_matches();
 
-    // TODO: Define default values
-    // let mut slot_time: u64 = SECONDS_PER_SLOT;
-    // let mut failure_rate: f32 = 1.0;
     let simulator = if let Some(mut vals) = matches.values_of("auto") {
         let slot_time = vals
             .next()
-            .unwrap()
+            .unwrap_or(&format!("{}", SECONDS_PER_SLOT))
             .parse()
             .expect("SLOT_TIME must be `u64`.");
         let failure_rate = vals
             .next()
-            .unwrap()
+            .unwrap_or("1.0")
             .parse()
             .expect("FAILURE_RATE must be `f32`.");
         assert!(
@@ -55,11 +52,12 @@ async fn main() {
             "FAILURE_RATE must be a positive float <= 1.0."
         );
         let shared_simulator = Arc::new(Mutex::new(Simulator::new()));
-        let simulator = shared_simulator.clone();
 
+        let simulator = shared_simulator.clone();
         tokio::spawn(async move {
             process_auto(simulator, slot_time, failure_rate).await;
         });
+
         println!("Simulator started in auto mode.");
         shared_simulator
     } else {
@@ -67,7 +65,6 @@ async fn main() {
         Arc::new(Mutex::new(Simulator::new()))
     };
 
-    // Run Eth2 simulator
     let request_logs = Arc::new(Mutex::new(Vec::<RequestLog>::new()));
 
     let routes = filters(simulator, request_logs)
