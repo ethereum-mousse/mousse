@@ -4,10 +4,11 @@ import DashboardLayout from 'src/layouts/DashboardLayout';
 import MainLayout from 'src/layouts/MainLayout';
 import BlockListView from 'src/views/blocks/BlockListView';
 import FinalizedBlockListView from 'src/views/finalized_blocks/FinalizedBlockListView';
-import NotFoundView from 'src/views/errors/NotFoundView';
+import StateListView from 'src/views/states/StateListView';
 import LogListView from 'src/views/logs/LogListView';
 import ProcessingView from 'src/views/processing/ProcessingView';
 import SettingsView from 'src/views/settings/SettingsView';
+import NotFoundView from 'src/views/errors/NotFoundView';
 
 const routes = [
   {
@@ -16,6 +17,7 @@ const routes = [
     children: [
       { path: 'blocks', element: <BlockListView /> },
       { path: 'finalized_blocks', element: <FinalizedBlockListView /> },
+      { path: 'states', element: <StateListView /> },
       { path: 'logs', element: <LogListView /> },
       { path: 'settings', element: <SettingsView /> },
       { path: 'processing', element: <ProcessingView /> },
