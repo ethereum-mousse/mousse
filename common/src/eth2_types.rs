@@ -68,7 +68,6 @@ impl Default for DataCommitment {
 impl DataCommitment {
     /// Generate a dummy commitment based on the data's hash.
     /// TODO: Use the real KZG commitment.
-    #[allow(clippy::ptr_arg)]
     pub fn dummy_from_bytes(bytes: &[u8]) -> Self {
         let mut hash: u64 = calculate_hash(&bytes.to_vec());
         let mut dummy_sig: Vec<u8> = Vec::new();
