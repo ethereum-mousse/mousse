@@ -18,3 +18,4 @@ base64 = "0.13"
 chrono = "0.4"
 clap = { version = "3.0.0-beta.2", features = ["yaml"] }
 rand = "0.8.0"
+serde_qs = "0.8"
