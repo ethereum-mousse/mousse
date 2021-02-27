@@ -26,6 +26,17 @@ impl Simulator {
         }
     }
 
+    /// Init the simulator.
+    /// NOTE: This function is used for http_api. It might be better to do this process on http_api.
+    pub fn init(&mut self) {
+        self.slot = GENESIS_SLOT;
+        self.beacon_chain = BeaconChain::new();
+        self.shards = (0..SHARD_NUM)
+            .map(|shard_id| shard::Shard::new(shard_id as ShardId))
+            .collect();
+        self.params = Vec::new();
+    }
+
     /// Process to the given slot in a happy case.
     pub fn process_slots_happy(&mut self, slot: Slot) -> Result<(), SlotProcessingError> {
         while self.params.len() <= slot as usize {
