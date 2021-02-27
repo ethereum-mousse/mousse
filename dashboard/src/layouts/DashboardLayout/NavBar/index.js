@@ -8,24 +8,30 @@ import {
   makeStyles
 } from '@material-ui/core';
 import {
-  // BarChart as BarChartIcon,
-  Settings as SettingsIcon,
-  Inbox as LogIcon,
-  Copy as BlockIcon,
+  Copy as BlocksIcon,
+  Hash as StatesIcon,
   FastForward as ProcessingIcon,
+  Inbox as LogsIcon,
+  Settings as SettingsIcon,
+  // BarChart as BarChartIcon,
 } from 'react-feather';
 import NavItem from './NavItem';
 
 const items = [
   {
     href: '/app/blocks',
-    icon: BlockIcon,
+    icon: BlocksIcon,
     title: 'Blocks'
   },
   {
     href: '/app/finalized_blocks',
-    icon: BlockIcon,
+    icon: BlocksIcon,
     title: 'Finalized Blocks'
+  },
+  {
+    href: '/app/states',
+    icon: StatesIcon,
+    title: 'States'
   },
   {
     href: '/app/processing',
@@ -34,7 +40,7 @@ const items = [
   },
   {
     href: '/app/logs',
-    icon: LogIcon,
+    icon: LogsIcon,
     title: 'Logs'
   },
   {
