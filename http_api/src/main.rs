@@ -254,7 +254,7 @@ pub fn root() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection
     warp::get().and(warp::path::end().map(|| "root"))
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct CountAndPageParams {
     count: Option<Slot>,
     page: Option<usize>,
@@ -279,7 +279,13 @@ pub async fn get_beacon_blocks(
     request_logs: SharedRequestLogs,
 ) -> Result<impl warp::Reply, Infallible> {
     let mut request_logs = request_logs.lock().await;
-    log(&mut request_logs, String::from("GET /beacon/blocks"));
+    log(
+        &mut request_logs,
+        format!(
+            "GET /beacon/blocks?{}",
+            serde_qs::to_string(&params).unwrap()
+        ),
+    );
     let simulator = simulator.lock().await;
     let count = params.count.unwrap_or(100);
     let beacon_blocks = if simulator.beacon_chain.blocks.len() < count as usize {
@@ -369,7 +375,13 @@ pub async fn get_beacon_states(
     request_logs: SharedRequestLogs,
 ) -> Result<impl warp::Reply, Infallible> {
     let mut request_logs = request_logs.lock().await;
-    log(&mut request_logs, String::from("GET /beacon/states"));
+    log(
+        &mut request_logs,
+        format!(
+            "GET /beacon/states?{}",
+            serde_qs::to_string(&params).unwrap()
+        ),
+    );
     let simulator = simulator.lock().await;
     let count = params.count.unwrap_or(100);
     let beacon_states = if simulator.beacon_chain.states.len() < count as usize {

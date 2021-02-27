@@ -55,12 +55,12 @@ const Results = ({ className, logs, ...rest }) => {
                 <TableCell>
                   ENDPOINT
                 </TableCell>
-                <TableCell>
+                {/* <TableCell>
                   REQUEST BODY
                 </TableCell>
                 <TableCell>
                   RESPONSE BODY
-                </TableCell>
+                </TableCell> */}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -79,12 +79,12 @@ const Results = ({ className, logs, ...rest }) => {
                   <TableCell>
                     {log.endpoint}
                   </TableCell>
-                  <TableCell>
+                  {/* <TableCell>
                     -
                   </TableCell>
                   <TableCell>
                     -
-                  </TableCell>
+                  </TableCell> */}
                 </TableRow>
               ))}
             </TableBody>
