@@ -42,7 +42,7 @@ async fn main() {
         .with(cors());
 
     let port = if let Some(port) = matches.value_of("port") {
-        port.parse().expect("END_SLOT must be a positive integer")
+        port.parse().expect("`port` must be a positive integer")
     } else {
         3030
     };
