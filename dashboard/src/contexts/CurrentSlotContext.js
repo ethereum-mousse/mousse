@@ -1,6 +1,6 @@
-// import React from 'react';
+import React from 'react';
 
-// export const CurrentSlotContext = React.createContext({
-//     port_number: 3030,
-//     setPortNumber: () => { }
-// });
+export const CurrentSlotContext = React.createContext({
+    current_slot: 0,
+    setCurrentSlot: () => { }
+});

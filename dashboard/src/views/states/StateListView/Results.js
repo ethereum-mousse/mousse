@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import PropTypes from 'prop-types';
 // import moment from 'moment';
@@ -43,11 +43,40 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-const Results = ({ className, states, ...rest }) => {
+const Results = ({ className, ...rest }) => {
   const classes = useStyles();
+
+  const [states, setStates] = useState([]);
+
   const [openedStateIds, setOpenedStateIds] = useState(new Set());
-  const [limit, setLimit] = useState(10);
+  const [count, setCount] = useState(10);
   const [page, setPage] = useState(0);
+  const [updating, setUpdating] = useState(true);
+
+  useEffect(() => {
+    updateStates(count, page);
+  }, []);
+
+  const updateStates = (count, page) => {
+    setUpdating(true);
+    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/beacon/states";
+    let url = new URL(endpoint);
+    let params = {
+      count: count,
+      page: page,
+    };
+
+    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+    fetch(url, {
+      method: "GET",
+    })
+      .then(response => response.json())
+      .then(states => {
+        setStates(states);
+        setUpdating(false);
+      })
+      .catch(error => console.error("Error:", error));
+  }
 
   const handleOpenState = (id) => {
     let newOpenedStateIds = new Set(openedStateIds);
@@ -59,16 +88,19 @@ const Results = ({ className, states, ...rest }) => {
     setOpenedStateIds(newOpenedStateIds);
   }
 
-  const handleLimitChange = (event) => {
-    setLimit(event.target.value);
+  const handleCountChange = (event) => {
+    let count = event.target.value;
+    setCount(count);
+    updateStates(count, page);
   };
 
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
-  };
+    updateStates(count, newPage);
+  }
 
   const stateColorClassName = state => {
-    // if (state.state_root == null || state.shard_headers.length === -1) {
+    // if (!updating && state.state_root == null || state.shard_headers.length === -1) {
     //   return classes.table_row_red;
     // }
     // else {
@@ -79,7 +111,9 @@ const Results = ({ className, states, ...rest }) => {
   let slot_to_state = [];
   if (states.length > 0) {
     let state_id = 0;
-    for (let slot = 0; slot <= states[states.length - 1].slot; slot++) {
+    let min_slot = Math.max(0, rest.current_slot - (page + 1) * count + 1);
+    let max_slot = rest.current_slot - page * count;
+    for (let slot = min_slot; slot <= max_slot; slot++) {
       if (slot === states[state_id].slot) {
         slot_to_state.push(states[state_id]);
         state_id += 1;
@@ -87,9 +121,12 @@ const Results = ({ className, states, ...rest }) => {
       else {
         slot_to_state.push({
           slot: slot,
-          finalized_checkpoint: null,
-          previous_epoch_pending_shard_headers: null,
-          current_epoch_pending_shard_headers: null,
+          finalized_checkpoint: {
+            epoch: null,
+            root: ""
+          },
+          previous_epoch_pending_shard_headers: [],
+          current_epoch_pending_shard_headers: [],
           shard_gasprice: null,
         });
       }
@@ -121,7 +158,7 @@ const Results = ({ className, states, ...rest }) => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {slot_to_state_rev.slice(page * limit, (page + 1) * limit).map((state, index) => (
+              {slot_to_state_rev.slice(0, count).map((state, index) => (
                 <React.Fragment
                   key={index}>
                   <TableRow
@@ -169,11 +206,11 @@ const Results = ({ className, states, ...rest }) => {
       </PerfectScrollbar>
       <TablePagination
         component="div"
-        count={states.length}
+        count={rest.current_slot}
         onChangePage={handlePageChange}
-        onChangeRowsPerPage={handleLimitChange}
+        onChangeRowsPerPage={handleCountChange}
         page={page}
-        rowsPerPage={limit}
+        rowsPerPage={count}
         rowsPerPageOptions={[5, 10, 25, 50, 100]}
       />
     </Card >

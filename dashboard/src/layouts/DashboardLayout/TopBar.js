@@ -34,7 +34,6 @@ const TopBar = ({
   ...rest
 }) => {
   const classes = useStyles();
-  const [head, setHead] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,7 +41,9 @@ const TopBar = ({
         'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/beacon/blocks/head'
       );
 
-      setHead(result.data);
+      if (result.data) {
+        rest.setCurrentSlot(result.data.slot);
+      }
     };
 
     const interval = setInterval(fetchData, 1000);
@@ -64,7 +65,7 @@ const TopBar = ({
             CURRENT SLOT
           </Typography>
           <Typography variant="h4" className={classes.info_value}>
-            {head === null ? 0 : head.slot}
+            {rest.current_slot === null ? 0 : rest.current_slot}
           </Typography>
         </Box>
         <Box className={classes.info}>

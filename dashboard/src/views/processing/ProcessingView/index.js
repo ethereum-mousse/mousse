@@ -9,6 +9,7 @@ import SlotProcessor from './SlotProcessor';
 import Bid from './Bid';
 import SuccessDialog from './SuccessDialog';
 import axios from 'axios';
+import { CurrentSlotContext } from 'src/contexts/CurrentSlotContext';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -22,37 +23,38 @@ const useStyles = makeStyles((theme) => ({
 const ProcessingView = () => {
   const classes = useStyles();
 
-  const [head, setHead] = useState(null);
-  const [current_slot, setCurrentSlot] = useState(null);
-
   const [success_open, setSuccessOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const result = await axios(
-        'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/beacon/blocks/head'
-      );
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     const result = await axios(
+  //       'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/beacon/blocks/head'
+  //     );
 
-      setHead(result.data);
-      if (result.data) {
-        setCurrentSlot(result.data.slot);
-      }
-    };
+  //     setHead(result.data);
+  //     if (result.data) {
+  //       setCurrentSlot(result.data.slot);
+  //     }
+  //   };
 
-    fetchData();
-  }, []);
+  //   fetchData();
+  // }, []);
 
   return (
     <Page
       className={classes.root}
       title="Processing"
     >
-      <Container maxWidth="md">
-        <SlotProcessor current_slot={current_slot} setCurrentSlot={setCurrentSlot} setSuccessOpen={setSuccessOpen} />
-        <Box mt={3}>
-          <Bid setSuccessOpen={setSuccessOpen} />
-        </Box>
-      </Container>
+      <CurrentSlotContext.Consumer>
+        {value => (
+          <Container maxWidth="md">
+            <SlotProcessor current_slot={value.current_slot} setCurrentSlot={value.setCurrentSlot} setSuccessOpen={setSuccessOpen} />
+            <Box mt={3}>
+              <Bid current_slot={value.current_slot} setSuccessOpen={setSuccessOpen} />
+            </Box>
+          </Container>
+        )}
+      </CurrentSlotContext.Consumer>
       <SuccessDialog success_open={success_open} setSuccessOpen={setSuccessOpen} />
     </Page >
   );
