@@ -868,6 +868,7 @@ dependencies = [
  "common",
  "eth2_simulator",
  "pretty_env_logger",
+ "rand 0.8.1",
  "serde",
  "serde_derive",
  "tokio",

@@ -8,3 +8,10 @@ args:
         long: port 
         value_name: PORT
         takes_value: true
+    - auto:
+        about: "Automatic emulation with (SLOT_TIME, FAILURE_RATE). Default: (12, 1.0)."
+        long: auto
+        value_names:
+            - SLOT_TIME
+            - FAILURE_RATE
+        takes_value: true
