@@ -32,6 +32,11 @@ const useStyles = makeStyles(({
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  submit_buttons: {
+    '& > button': {
+      margin: '5px'
+    },
   }
   // green_radio: {
   //   color: green[400],
@@ -80,7 +85,6 @@ const SlotProcessor = ({ className, ...rest }) => {
     let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/simulator/slot/";
     endpoint += situation_to_endpoint[situation] + "/";
     endpoint += slot;
-    console.log(endpoint);
 
     fetch(endpoint, {
       method: "POST",
@@ -89,6 +93,28 @@ const SlotProcessor = ({ className, ...rest }) => {
         if (response.status === 200) {
           console.log("Success");
           rest.setCurrentSlot(slot);
+          rest.setSuccessOpen(true);
+        }
+        else {
+          response.json().then(() => {
+            console.log("Error:", JSON.stringify(response));
+          })
+        }
+      })
+      .catch(error => console.error("Error:", error));
+  };
+
+  const handleClickInitSimulator = event => {
+    event.preventDefault();
+
+    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/simulator/init";
+
+    fetch(endpoint, {
+      method: "POST",
+    })
+      .then(response => {
+        if (response.status === 200) {
+          console.log("Success");
           rest.setSuccessOpen(true);
         }
         else {
@@ -181,7 +207,14 @@ const SlotProcessor = ({ className, ...rest }) => {
           display="flex"
           justifyContent="flex-end"
           p={2}
+          className={classes.submit_buttons}
         >
+          <Button
+            variant="contained"
+            onClick={handleClickInitSimulator}
+          >
+            Init Simulator
+          </Button>
           <Button
             color="primary"
             variant="contained"
