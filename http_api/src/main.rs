@@ -91,13 +91,11 @@ async fn process_auto(simulator: SharedSimulator, slot_time: u64, failure_rate: 
         if time::Instant::now() < start_time + slot_time * u32::try_from(simulator.slot).unwrap() {
             continue;
         }
-        println!("Auto processing. Slot {}", simulator.slot);
-        // TODO: How to remove this?
         let slot = simulator.slot;
+        println!("Auto processing. Slot {}", slot);
         let mut rng = rand::thread_rng();
         if rng.gen_range(0.0..1.0) < failure_rate {
             // TODO: Remove happy case from `process_random`.
-            // simulator.process_slots_random(simulator.slot);
             simulator.process_slots_random(slot);
         } else {
             simulator.process_slots_happy(slot);
