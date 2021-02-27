@@ -116,7 +116,11 @@ pub fn filters(
             simulator.clone(),
             request_logs.clone(),
         ))
-        .or(data_market_bid(simulator.clone(), request_logs.clone()))
+        .or(shards_bid(simulator.clone(), request_logs.clone()))
+        .or(shards_bid_with_data(
+            simulator.clone(),
+            request_logs.clone(),
+        ))
         .or(simulator_init(simulator.clone(), request_logs.clone()))
         .or(simulator_slot_process(
             simulator.clone(),
@@ -343,14 +347,14 @@ pub async fn get_finalized_checkpoint(
     Ok(warp::reply::json(&finalized_checkpoint))
 }
 
-/// POST /data_market/bid
+/// POST /shards/{shard}/bid
 /// $ curl -X POST -d '{"shard":0,"slot":0,"commitment":{"point":1337,"length":0},"fee":0}' -H 'Content-Type: application/json' http://localhost:3030/data_market/bid
-pub fn data_market_bid(
+pub fn shards_bid(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
-        .and(warp::path!("data_market" / "bid"))
+        .and(warp::path!("shards" / Shard / "bid"))
         .and(warp::body::content_length_limit(1024 * 16))
         .and(warp::body::json())
         .and(with_simulator(simulator))
@@ -359,14 +363,52 @@ pub fn data_market_bid(
 }
 
 pub async fn publish_bid(
+    _shard: Shard,
     bid: Bid,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
 ) -> Result<impl warp::Reply, Infallible> {
     let mut request_logs = request_logs.lock().await;
-    log(&mut request_logs, String::from("POST /data_market/bid"));
+    log(&mut request_logs, String::from("POST /shards/{shard}/bid"));
     let mut simulator = simulator.lock().await;
     simulator.publish_bid(bid.clone());
+    Ok(StatusCode::OK)
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct BidWithData {
+    bid: Bid,
+    data: String,
+}
+
+/// POST /shards/{shard}/bid_with_data
+/// $ curl -X POST -d '{"shard":0,"slot":0,"commitment":{"point":1337,"length":0},"fee":0}' -H 'Content-Type: application/json' http://localhost:3030/data_market/bid
+pub fn shards_bid_with_data(
+    simulator: SharedSimulator,
+    request_logs: SharedRequestLogs,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::post()
+        .and(warp::path!("shards" / Shard / "bid_with_data"))
+        .and(warp::body::content_length_limit(1024 * 1024))
+        .and(warp::body::json())
+        .and(with_simulator(simulator))
+        .and(with_request_logs(request_logs))
+        .and_then(publish_bid_with_data)
+}
+
+pub async fn publish_bid_with_data(
+    _shard: Shard,
+    bid_with_data: BidWithData,
+    simulator: SharedSimulator,
+    request_logs: SharedRequestLogs,
+) -> Result<impl warp::Reply, Infallible> {
+    let mut request_logs = request_logs.lock().await;
+    log(
+        &mut request_logs,
+        String::from("POST /shards/{shard}/bid_with_data"),
+    );
+    let mut simulator = simulator.lock().await;
+    simulator.publish_bid(bid_with_data.bid.clone());
     Ok(StatusCode::OK)
 }
 

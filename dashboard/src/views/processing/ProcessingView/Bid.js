@@ -116,15 +116,18 @@ const Bid = ({ className, ...rest }) => {
 
     let point_raw = hexToBytes(point.slice(2));
 
-    let endpoint = 'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/data_market/bid';
+    let endpoint = 'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/shards/' + shard + '/bid_with_data';
     let body = JSON.stringify({
-      shard: parseInt(shard),
-      slot: parseInt(slot),
-      commitment: {
-        point: hexToBytes(point_raw),
-        length: parseInt(length),
+      bid: {
+        shard: parseInt(shard),
+        slot: parseInt(slot),
+        commitment: {
+          point: hexToBytes(point_raw),
+          length: parseInt(length),
+        },
+        fee: parseInt(fee)
       },
-      fee: parseInt(fee)
+      data: encoded_file,
     });
 
     fetch(endpoint, {
