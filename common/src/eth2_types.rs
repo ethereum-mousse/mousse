@@ -26,9 +26,9 @@ pub type Gwei = u64;
 /// H256.
 pub type Root = H256;
 /// [u8; 96].
-pub type BLSSignature = [u8; BLS_SIGNATURE_BYTE_LEN];
+pub type BlsSignature = [u8; BLS_SIGNATURE_BYTE_LEN];
 /// [u8; 48].
-pub type BLSCommitment = [u8; BLS_COMMITMENT_BYTE_LEN];
+pub type BlsCommitment = [u8; BLS_COMMITMENT_BYTE_LEN];
 /// U256.
 /// Call this `FieldElement` instead of `BLSPoint`.
 /// Ref: https://github.com/ethereum/eth2.0-specs/pull/2172#discussion_r550884186
@@ -52,7 +52,7 @@ impl Checkpoint {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize, Serialize)]
 pub struct DataCommitment {
     #[serde(with = "BigArray")]
-    pub point: BLSCommitment,
+    pub point: BlsCommitment,
     pub length: u64,
 }
 
@@ -68,9 +68,8 @@ impl Default for DataCommitment {
 impl DataCommitment {
     /// Generate a dummy commitment based on the data's hash.
     /// TODO: Use the real KZG commitment.
-    #[allow(clippy::ptr_arg)]
-    pub fn dummy_from_bytes(bytes: &Vec<u8>) -> Self {
-        let mut hash: u64 = calculate_hash(bytes);
+    pub fn dummy_from_bytes(bytes: &[u8]) -> Self {
+        let mut hash: u64 = calculate_hash(&bytes.to_vec());
         let mut dummy_sig: Vec<u8> = Vec::new();
         for _ in 0..BLS_COMMITMENT_BYTE_LEN / 8 {
             hash = calculate_hash(&hash);
@@ -102,7 +101,7 @@ pub struct ShardHeader {
 pub struct SignedShardHeader {
     pub message: ShardHeader,
     #[serde(with = "BigArray")]
-    pub signature: BLSSignature,
+    pub signature: BlsSignature,
 }
 
 impl SignedShardHeader {
@@ -256,11 +255,11 @@ mod tests {
                 SignedShardHeader::dummy_from_header(ShardHeader {
                     slot: (num / SHARD_NUM) as Slot,
                     shard: (num % SHARD_NUM) as Shard,
-                    commitment: generate_dummy_from_string(&String::from(format!(
+                    commitment: generate_dummy_from_str(&format!(
                         "Slot {}, Shard {}",
                         num / SHARD_NUM,
                         num % SHARD_NUM
-                    ))),
+                    )),
                 })
             })
             .collect();
@@ -354,14 +353,14 @@ mod tests {
         );
     }
 
-    fn generate_dummy_from_string(s: &String) -> DataCommitment {
-        let bytes = s.clone().into_bytes();
-        DataCommitment::dummy_from_bytes(&bytes)
+    fn generate_dummy_from_str(s: &str) -> DataCommitment {
+        let bytes = s.as_bytes();
+        DataCommitment::dummy_from_bytes(bytes)
     }
 
     fn compare_dummy_from_string(s1: String, s2: String) {
-        let commitment1 = generate_dummy_from_string(&s1);
-        let commitment2 = generate_dummy_from_string(&s2);
+        let commitment1 = generate_dummy_from_str(&s1);
+        let commitment2 = generate_dummy_from_str(&s2);
         if s1 == s2 {
             assert_eq!(commitment1, commitment2);
         } else {
@@ -374,7 +373,7 @@ mod tests {
         let header = ShardHeader {
             slot: 0,
             shard: 0,
-            commitment: generate_dummy_from_string(&String::from("Ethreum")),
+            commitment: generate_dummy_from_str(&String::from("Ethreum")),
         };
         let signed_header1 = SignedShardHeader::dummy_from_header(header.clone());
         let signed_header2 = SignedShardHeader::dummy_from_header(header);
