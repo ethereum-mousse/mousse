@@ -81,18 +81,23 @@ const Bid = ({ className, ...rest }) => {
 
   const [file, setFile] = React.useState();
   const handleChangeFile = async (event) => {
+    if (event.target.files.length == 0) {
+      return;
+    }
     let file = await toBase64(event.target.files[0]);
     setFile(file);
 
     let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/utils/data_commitment";
-    let url = new URL(endpoint);
-    let params = {
-      data: file,
-    };
+    let body = JSON.stringify({
+      data: file
+    });
 
-    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-    fetch(url, {
-      method: "GET",
+    fetch(endpoint, {
+      method: "POST",
+      body: body,
+      headers: {
+        "Content-Type": "application/json"
+      }
     })
       .then(response => response.json())
       .then(commitment => {
@@ -107,6 +112,7 @@ const Bid = ({ className, ...rest }) => {
 
     let point_raw = hexToBytes(point.slice(2));
 
+    let endpoint = 'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/data_market/bid';
     let body = JSON.stringify({
       shard: parseInt(shard),
       slot: parseInt(slot),
@@ -116,9 +122,7 @@ const Bid = ({ className, ...rest }) => {
       },
       fee: parseInt(fee)
     });
-    console.log(body);
 
-    let endpoint = 'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/data_market/bid';
     fetch(endpoint, {
       method: "POST",
       body: body,
@@ -229,7 +233,6 @@ const Bid = ({ className, ...rest }) => {
             <Grid item xs={6} className={classes.upload}>
               <Box align="center">
                 <input
-                  accept="image/*"
                   className={classes.input}
                   id="contained-button-file"
                   // multiple

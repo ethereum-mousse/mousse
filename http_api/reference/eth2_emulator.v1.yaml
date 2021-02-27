@@ -275,10 +275,10 @@ paths:
           description: Not Found
       operationId: post-simulator-slot-process-random-slot_num
   /utils/data_commitment:
-    get:
+    parameters: []
+    post:
       summary: Calc Data Commitment From Base64 Encoded Text
-      tags:
-        - Utils
+      operationId: post-utils-data_commitment
       responses:
         '200':
           description: OK
@@ -288,9 +288,17 @@ paths:
                 $ref: '#/components/schemas/DataCommitment'
         '404':
           description: Not Found
-      operationId: get-utils-data_commitment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: string
       description: ''
-    parameters: []
+      tags:
+        - Utils
   /utils/request_logs:
     get:
       summary: Get Request Logs

@@ -694,32 +694,33 @@ pub async fn process_slots_random(
     }
 }
 
-/// GET /utils/data_commitment
+/// POST /utils/data_commitment
 pub fn utils_data_commitment(
     request_logs: SharedRequestLogs,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::get()
+    warp::post()
         .and(warp::path!("utils" / "data_commitment"))
-        .and(warp::query::<UtilsDataCommitmentParams>())
+        .and(warp::body::content_length_limit(1024 * 1024))
+        .and(warp::body::json())
         .and(with_request_logs(request_logs))
         .and_then(get_utils_data_commitment)
 }
 
 #[derive(Deserialize)]
-pub struct UtilsDataCommitmentParams {
-    data: Option<String>,
+pub struct UtilsDataCommitmentBody {
+    data: String,
 }
 
 pub async fn get_utils_data_commitment(
-    params: UtilsDataCommitmentParams,
+    body: UtilsDataCommitmentBody,
     request_logs: SharedRequestLogs,
 ) -> Result<impl warp::Reply, Infallible> {
     let mut request_logs = request_logs.lock().await;
     log(
         &mut request_logs,
-        String::from("GET /utils/data_commitment"),
+        String::from("POST /utils/data_commitment"),
     );
-    let base64string = params.data.unwrap_or_default();
+    let base64string = body.data;
     let bytes = base64::decode(base64string).unwrap_or_default();
     let dummy = DataCommitment::dummy_from_bytes(&bytes);
     Ok(warp::reply::json(&dummy))
