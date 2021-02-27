@@ -77,7 +77,7 @@ const SlotProcessor = ({ className, ...rest }) => {
       "random": "process_random"
     }
 
-    let endpoint = "http://localhost:3030/simulator/slot/";
+    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/simulator/slot/";
     endpoint += situation_to_endpoint[situation] + "/";
     endpoint += slot;
     console.log(endpoint);

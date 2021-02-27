@@ -84,7 +84,7 @@ const Bid = ({ className, ...rest }) => {
     let file = await toBase64(event.target.files[0]);
     setFile(file);
 
-    let endpoint = "http://localhost:3030/utils/data_commitment";
+    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/utils/data_commitment";
     let url = new URL(endpoint);
     let params = {
       data: file,
@@ -118,7 +118,7 @@ const Bid = ({ className, ...rest }) => {
     });
     console.log(body);
 
-    let endpoint = "http://localhost:3030/data_market/bid";
+    let endpoint = 'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/data_market/bid';
     fetch(endpoint, {
       method: "POST",
       body: body,

@@ -39,7 +39,7 @@ const TopBar = ({
   useEffect(() => {
     const fetchData = async () => {
       const result = await axios(
-        'http://localhost:3030/beacon/blocks/head'
+        'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/beacon/blocks/head'
       );
 
       setHead(result.data);
@@ -72,7 +72,7 @@ const TopBar = ({
             SERVER
           </Typography>
           <Typography variant="h4" className={classes.info_value}>
-            http://localhost:3030
+            http://localhost:{process.env.REACT_APP_PORT_NUMBER}
           </Typography>
         </Box>
         <Box className={classes.info}>

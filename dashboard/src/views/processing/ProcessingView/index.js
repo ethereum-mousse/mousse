@@ -30,7 +30,7 @@ const ProcessingView = () => {
   useEffect(() => {
     const fetchData = async () => {
       const result = await axios(
-        'http://localhost:3030/beacon/blocks/head'
+        'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/beacon/blocks/head'
       );
 
       setHead(result.data);

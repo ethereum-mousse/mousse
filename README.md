@@ -30,6 +30,9 @@ Run:
 $ npm start
 ```
 
+#### Options
+- `REACT_APP_PORT_NUMBER`: Port number of the eth2 emulator. Default: 3030.
+
 ## Eth2 Emulator Server
 The implementation of the emulator server is in the `http_api` directory, and the Ethereum 2.0 simulator `simulator` is running inside. The emulator API definition is located in the [http_api/reference](http_api/reference) directory.
 
