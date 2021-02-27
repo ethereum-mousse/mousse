@@ -20,8 +20,8 @@ import {
 import IconButton from '@material-ui/core/IconButton';
 import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
 import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
-import bytesToHex from 'src/utils/bytesToHex';
 import omitString from 'src/utils/omitString';
+import PendingShardHeadersTable from './PendingShardHeadersTable';
 
 const useStyles = makeStyles((theme) => ({
   root: {},
@@ -138,7 +138,7 @@ const Results = ({ className, states, ...rest }) => {
                       {state.slot}
                     </TableCell>
                     <TableCell align="right">
-                      {state.shard_gasprice}
+                      {state.shard_gasprice} Gwei
                     </TableCell>
                     <TableCell>
                       Epoch: {state.finalized_checkpoint.epoch}<br />
@@ -152,37 +152,11 @@ const Results = ({ className, states, ...rest }) => {
                           <Typography variant="h5" gutterBottom component="div">
                             Current Epoch Pending Shard Headers
                           </Typography>
-                          {(state.current_epoch_pending_shard_headers && state.current_epoch_pending_shard_headers.length >= 1) ?
-                            <Table size="small" aria-label="purchases">
-                              <TableHead>
-                                <TableRow>
-                                  <TableCell align="right">SLOT</TableCell>
-                                  <TableCell align="right">SHARD</TableCell>
-                                  <TableCell>COMMITMENT</TableCell>
-                                  <TableCell>ROOT</TableCell>
-                                  <TableCell>CONFIRMED</TableCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {state.current_epoch_pending_shard_headers.map((shard_header, index) => (
-                                  <TableRow key={index}>
-                                    <TableCell align="right">
-                                      {shard_header.slot}
-                                    </TableCell>
-                                    <TableCell align="right">
-                                      {shard_header.shard}
-                                    </TableCell>
-                                    <TableCell>
-                                      Point: <code className={classes.monospace}>0x{omitString(bytesToHex(shard_header.commitment.point), 64)}</code><br />
-                                      Length: {shard_header.commitment.length}
-                                    </TableCell>
-                                    <TableCell><code className={classes.monospace}>0x{omitString(shard_header.root, 64)}</code></TableCell>
-                                    <TableCell>{shard_header.confirmed ? "True" : "False"}</TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                            : <Typography>None</Typography>}
+                          <PendingShardHeadersTable pending_shard_headers={state.current_epoch_pending_shard_headers}></PendingShardHeadersTable>
+                          <Typography variant="h5" gutterBottom component="div">
+                            Previous Epoch Pending Shard Headers
+                          </Typography>
+                          <PendingShardHeadersTable pending_shard_headers={state.previous_epoch_pending_shard_headers}></PendingShardHeadersTable>
                         </Box>
                       </Collapse>
                     </TableCell>
