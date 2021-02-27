@@ -2,9 +2,12 @@
 use chrono::prelude::*;
 use clap::{load_yaml, App};
 use eth2_simulator::simulator::Simulator;
+use rand::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::Infallible;
+use std::convert::TryFrom;
 use std::sync::Arc;
+use std::time;
 use tokio::sync::Mutex;
 use warp::{http::StatusCode, reject, Filter};
 
@@ -33,8 +36,35 @@ async fn main() {
     let yaml = load_yaml!("cli.yaml");
     let matches = App::from(yaml).get_matches();
 
-    // Run Eth2 simulator
-    let simulator = Arc::new(Mutex::new(Simulator::new()));
+    let simulator = if let Some(mut vals) = matches.values_of("auto") {
+        let slot_time = vals
+            .next()
+            .unwrap_or(&format!("{}", SECONDS_PER_SLOT))
+            .parse()
+            .expect("SLOT_TIME must be `u64`.");
+        let failure_rate = vals
+            .next()
+            .unwrap_or("1.0")
+            .parse()
+            .expect("FAILURE_RATE must be `f32`.");
+        assert!(
+            (0.0..=1.0).contains(&failure_rate),
+            "FAILURE_RATE must be a positive float <= 1.0."
+        );
+        let shared_simulator = Arc::new(Mutex::new(Simulator::new()));
+
+        let simulator = shared_simulator.clone();
+        tokio::spawn(async move {
+            process_auto(simulator, slot_time, failure_rate).await;
+        });
+
+        println!("Simulator started in auto mode.");
+        shared_simulator
+    } else {
+        println!("Simulator started in manual mode.");
+        Arc::new(Mutex::new(Simulator::new()))
+    };
+
     let request_logs = Arc::new(Mutex::new(Vec::<RequestLog>::new()));
 
     let routes = filters(simulator, request_logs)
@@ -48,6 +78,26 @@ async fn main() {
     };
 
     warp::serve(routes).run(([127, 0, 0, 1], port)).await;
+}
+
+async fn process_auto(simulator: SharedSimulator, slot_time: u64, failure_rate: f32) {
+    let slot_time = time::Duration::from_secs(slot_time);
+    let start_time = time::Instant::now();
+    loop {
+        let mut simulator = simulator.lock().await;
+        if time::Instant::now() < start_time + slot_time * u32::try_from(simulator.slot).unwrap() {
+            continue;
+        }
+        let slot = simulator.slot;
+        println!("Auto processing. Slot {}", slot);
+        let mut rng = rand::thread_rng();
+        if rng.gen_range(0.0..1.0) < failure_rate {
+            // TODO: Remove happy case from `process_random`.
+            simulator.process_slots_random(slot);
+        } else {
+            simulator.process_slots_happy(slot);
+        };
+    }
 }
 
 pub fn filters(
