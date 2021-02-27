@@ -67,6 +67,7 @@ pub fn filters(
             request_logs.clone(),
         ))
         .or(data_market_bid(simulator.clone(), request_logs.clone()))
+        .or(simulator_init(simulator.clone(), request_logs.clone()))
         .or(simulator_slot_process(
             simulator.clone(),
             request_logs.clone(),
@@ -316,6 +317,30 @@ pub async fn publish_bid(
     log(&mut request_logs, String::from("POST /data_market/bid"));
     let mut simulator = simulator.lock().await;
     simulator.publish_bid(bid.clone());
+    Ok(StatusCode::OK)
+}
+
+/// POST /simulator/init
+/// $ curl -X POST http://localhost:3030/simulator/init
+pub fn simulator_init(
+    simulator: SharedSimulator,
+    request_logs: SharedRequestLogs,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::post()
+        .and(warp::path!("simulator" / "init"))
+        .and(with_simulator(simulator))
+        .and(with_request_logs(request_logs))
+        .and_then(init_simulator)
+}
+
+pub async fn init_simulator(
+    simulator: SharedSimulator,
+    request_logs: SharedRequestLogs,
+) -> Result<impl warp::Reply, Infallible> {
+    let mut request_logs = request_logs.lock().await;
+    log(&mut request_logs, String::from("POST /simulator/init"));
+    let mut simulator = simulator.lock().await;
+    simulator.init();
     Ok(StatusCode::OK)
 }
 

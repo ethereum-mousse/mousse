@@ -34,7 +34,9 @@ const ProcessingView = () => {
       );
 
       setHead(result.data);
-      setCurrentSlot(result.data.slot);
+      if (result.data) {
+        setCurrentSlot(result.data.slot);
+      }
     };
 
     fetchData();
