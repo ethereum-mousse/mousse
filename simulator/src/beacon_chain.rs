@@ -103,10 +103,22 @@ impl BeaconChain {
     // Process at the end of an epoch.
     fn process_epoch(&mut self) {
         self.update_shard_gasprice();
+        // Store the previous epoch confirmed shard headers in the state.
+        for header in self.state.previous_epoch_pending_shard_headers.iter() {
+            if !header.confirmed {
+                continue;
+            }
+            self.state.grandparent_epoch_confirmed_commitments[header.shard as usize]
+                [(header.slot % SLOTS_PER_EPOCH) as usize] = header.commitment.clone();
+        }
         // Inherit the current pending shard headers to the next epoch.
         self.state.previous_epoch_pending_shard_headers =
             self.state.current_epoch_pending_shard_headers.clone();
+
         // Reset the current pending shard headers.
+        // TODO: Add "empty" headers for the case where no shard blob header is proposed.
+        // See `reset_pending_headers()` in the spec below..
+        // https://github.com/ethereum/eth2.0-specs/blob/069fbd7b910410ef47a9fb7a1e4839ac32f39929/specs/phase1/beacon-chain.md#pending-headers
         self.state.current_epoch_pending_shard_headers = VariableList::from(Vec::new());
 
         // Reset the shard headers pool.

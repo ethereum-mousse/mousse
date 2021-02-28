@@ -107,6 +107,7 @@ fn process_slots_happy() {
     }
 }
 
+// TODO: Add tests for `BeaconState`'s `previous_epoch_pending_shard_headers` and `grandparent_epoch_confirmed_commitments`.
 #[test]
 fn process_slots_with_bids() {
     let mut simulator = Simulator::new();
