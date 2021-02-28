@@ -18,6 +18,25 @@ pub use common::eth2_types::*;
 pub type SharedSimulator = Arc<Mutex<Simulator>>;
 
 #[derive(Serialize, Clone)]
+pub struct Config {
+    auto: bool,
+    slot_time: u64,
+    failure_rate: f32,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            auto: false,
+            slot_time: SECONDS_PER_SLOT,
+            failure_rate: 0.0,
+        }
+    }
+}
+
+pub type SharedConfig = Arc<Mutex<Config>>;
+
+#[derive(Serialize, Clone)]
 pub struct RequestLog {
     log_id: usize,
     date: String,
@@ -36,46 +55,44 @@ async fn main() {
     let yaml = load_yaml!("cli.yaml");
     let matches = App::from(yaml).get_matches();
 
-    let simulator = if matches.values_of("auto").is_some() {
-        let slot_time: u64 = if let Some(val) = matches.value_of("slot-time") {
-            val.parse().expect("SLOT_TIME must be `u64`.")
-        } else {
-            SECONDS_PER_SLOT
-        };
+    let mut config = Config::default();
+    if matches.values_of("auto").is_some() {
+        config.auto = true;
 
-        let failure_rate: f32 = if let Some(val) = matches.value_of("failure-rate") {
-            val.parse().expect("FAILURE_RATE must be `f32`.")
-        } else {
-            0.0
-        };
-        assert!(
-            (0.0..=1.0).contains(&failure_rate),
-            "FAILURE_RATE must be a positive float <= 1.0."
-        );
+        if let Some(val) = matches.value_of("slot-time") {
+            config.slot_time = val.parse().expect("SLOT_TIME must be `u64`.");
+        }
 
-        let shared_simulator = Arc::new(Mutex::new(Simulator::new()));
-
-        let simulator = shared_simulator.clone();
-        tokio::spawn(async move {
-            process_auto(simulator, slot_time, failure_rate).await;
-        });
-
+        if let Some(val) = matches.value_of("failure-rate") {
+            let failure_rate = val.parse().expect("FAILURE_RATE must be `f32`.");
+            assert!(
+                (0.0..=1.0).contains(&failure_rate),
+                "FAILURE_RATE must be a positive float <= 1.0."
+            );
+            config.failure_rate = failure_rate;
+        }
         println!("Simulator started in auto mode.");
-        shared_simulator
     } else {
         println!("Simulator started in manual mode.");
-        Arc::new(Mutex::new(Simulator::new()))
     };
 
-    // Genesis
-    {
-        let mut simulator = simulator.lock().await;
-        simulator.process_slots_happy(0);
-    }
+    let mut simulator = Simulator::new();
+    // Process the genesis slot.
+    simulator.process_slots_happy(0);
+    println!("Slot 0 is automatically processed.");
 
-    let request_logs = Arc::new(Mutex::new(Vec::<RequestLog>::new()));
+    let shared_simulator = Arc::new(Mutex::new(simulator));
+    let shared_config = Arc::new(Mutex::new(config));
 
-    let routes = filters(simulator, request_logs)
+    let simulator = shared_simulator.clone();
+    let config = shared_config.clone();
+    tokio::spawn(async move {
+        process_auto(simulator, config).await;
+    });
+
+    let shared_request_logs = Arc::new(Mutex::new(Vec::<RequestLog>::new()));
+
+    let routes = filters(shared_simulator, shared_request_logs, shared_config)
         .recover(handle_rejection)
         .with(cors());
 
@@ -88,13 +105,29 @@ async fn main() {
     warp::serve(routes).run(([127, 0, 0, 1], port)).await;
 }
 
-async fn process_auto(simulator: SharedSimulator, slot_time: u64, failure_rate: f32) {
-    let slot_time = time::Duration::from_secs(slot_time);
+async fn process_auto(simulator: SharedSimulator, config: SharedConfig) {
     let ten_millis = time::Duration::from_millis(10);
+    // The time when the auto mode started.
+    let mut start_time = time::Instant::now();
     // The number of slots processed after the auto mode started.
-    let mut processed_slot: u32 = 0;
-    let start_time = time::Instant::now();
+    let mut processed_slot = 0;
+    // Whether `config.auto` was true in the last loop.
+    let mut last_is_auto = false;
     loop {
+        let config = config.lock().await;
+        if !config.auto {
+            last_is_auto = false;
+            // Wait 0.01 seconds.
+            thread::sleep(ten_millis);
+            continue;
+        }
+        if !last_is_auto {
+            // Reset these values at the first loop after the auto mode started.
+            processed_slot = 0;
+            start_time = time::Instant::now();
+            last_is_auto = true;
+        }
+        let slot_time = time::Duration::from_secs(config.slot_time);
         if time::Instant::now() < start_time + slot_time * processed_slot {
             // Wait 0.01 seconds.
             thread::sleep(ten_millis);
@@ -104,7 +137,7 @@ async fn process_auto(simulator: SharedSimulator, slot_time: u64, failure_rate: 
         let slot = simulator.slot;
         println!("Auto processing. Slot {}", slot);
         let mut rng = rand::thread_rng();
-        if rng.gen_range(0.0..1.0) < failure_rate {
+        if rng.gen_range(0.0..1.0) < config.failure_rate {
             // TODO: Remove happy case from `process_random`.
             simulator.process_slots_random(slot);
         } else {
@@ -117,6 +150,7 @@ async fn process_auto(simulator: SharedSimulator, slot_time: u64, failure_rate: 
 pub fn filters(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     root()
         .or(beacon_blocks(simulator.clone(), request_logs.clone()))
@@ -135,38 +169,50 @@ pub fn filters(
             simulator.clone(),
             request_logs.clone(),
         ))
-        .or(simulator_init(simulator.clone(), request_logs.clone()))
+        .or(simulator_init(
+            simulator.clone(),
+            request_logs.clone(),
+            config.clone(),
+        ))
         .or(simulator_slot_process(
             simulator.clone(),
             request_logs.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_without_shard_data_inclusion(
             simulator.clone(),
             request_logs.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_without_shard_blob_proposal(
             simulator.clone(),
             request_logs.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_without_shard_header_inclusion(
             simulator.clone(),
             request_logs.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_without_shard_header_confirmation(
             simulator.clone(),
             request_logs.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_without_beacon_chain_finality(
             simulator.clone(),
             request_logs.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_without_beacon_block_proposal(
             simulator.clone(),
             request_logs.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_random(
             simulator,
             request_logs.clone(),
+            config.clone(),
         ))
         .or(utils_data_commitment(request_logs.clone()))
         .or(utils_request_logs(request_logs))
@@ -182,6 +228,12 @@ fn with_request_logs(
     request_logs: SharedRequestLogs,
 ) -> impl Filter<Extract = (SharedRequestLogs,), Error = Infallible> + Clone {
     warp::any().map(move || request_logs.clone())
+}
+
+fn with_config(
+    config: SharedConfig,
+) -> impl Filter<Extract = (SharedConfig,), Error = Infallible> + Clone {
+    warp::any().map(move || config.clone())
 }
 
 fn cors() -> warp::cors::Builder {
@@ -508,22 +560,27 @@ pub async fn publish_bid_with_data(
 pub fn simulator_init(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path!("simulator" / "init"))
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
+        .and(with_config(config))
         .and_then(init_simulator)
 }
 
 pub async fn init_simulator(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> Result<impl warp::Reply, Infallible> {
     let mut request_logs = request_logs.lock().await;
     log(&mut request_logs, String::from("POST /simulator/init"));
     let mut simulator = simulator.lock().await;
     simulator.init();
+    let mut config = config.lock().await;
+    config.auto = false;
     Ok(StatusCode::OK)
 }
 
@@ -532,11 +589,13 @@ pub async fn init_simulator(
 pub fn simulator_slot_process(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path!("simulator" / "slot" / "process" / Slot))
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
+        .and(with_config(config))
         .and_then(process_slots)
 }
 
@@ -544,6 +603,7 @@ pub async fn process_slots(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
@@ -551,6 +611,8 @@ pub async fn process_slots(
         format!("POST /simulator/slot/process/{}", slot),
     );
     let mut simulator = simulator.lock().await;
+    let mut config = config.lock().await;
+    config.auto = false;
     match simulator.process_slots_happy(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -562,6 +624,7 @@ pub async fn process_slots(
 pub fn simulator_slot_process_without_shard_data_inclusion(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path!(
@@ -569,6 +632,7 @@ pub fn simulator_slot_process_without_shard_data_inclusion(
         ))
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
+        .and(with_config(config))
         .and_then(process_slots_without_shard_data_inclusion)
 }
 
@@ -576,6 +640,7 @@ pub async fn process_slots_without_shard_data_inclusion(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
@@ -586,6 +651,8 @@ pub async fn process_slots_without_shard_data_inclusion(
         ),
     );
     let mut simulator = simulator.lock().await;
+    let mut config = config.lock().await;
+    config.auto = false;
     match simulator.process_slots_without_shard_data_inclusion(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -597,6 +664,7 @@ pub async fn process_slots_without_shard_data_inclusion(
 pub fn simulator_slot_process_without_shard_blob_proposal(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path!(
@@ -604,6 +672,7 @@ pub fn simulator_slot_process_without_shard_blob_proposal(
         ))
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
+        .and(with_config(config))
         .and_then(process_slots_without_shard_blob_proposal)
 }
 
@@ -611,6 +680,7 @@ pub async fn process_slots_without_shard_blob_proposal(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
@@ -621,6 +691,8 @@ pub async fn process_slots_without_shard_blob_proposal(
         ),
     );
     let mut simulator = simulator.lock().await;
+    let mut config = config.lock().await;
+    config.auto = false;
     match simulator.process_slots_without_shard_blob_proposal(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -632,6 +704,7 @@ pub async fn process_slots_without_shard_blob_proposal(
 pub fn simulator_slot_process_without_shard_header_inclusion(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path!(
@@ -639,6 +712,7 @@ pub fn simulator_slot_process_without_shard_header_inclusion(
         ))
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
+        .and(with_config(config))
         .and_then(process_slots_without_shard_header_inclusion)
 }
 
@@ -646,6 +720,7 @@ pub async fn process_slots_without_shard_header_inclusion(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
@@ -656,6 +731,8 @@ pub async fn process_slots_without_shard_header_inclusion(
         ),
     );
     let mut simulator = simulator.lock().await;
+    let mut config = config.lock().await;
+    config.auto = false;
     match simulator.process_slots_without_shard_header_inclusion(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -667,6 +744,7 @@ pub async fn process_slots_without_shard_header_inclusion(
 pub fn simulator_slot_process_without_shard_header_confirmation(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path!(
@@ -674,6 +752,7 @@ pub fn simulator_slot_process_without_shard_header_confirmation(
         ))
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
+        .and(with_config(config))
         .and_then(process_slots_without_shard_header_inclusion)
 }
 
@@ -681,6 +760,7 @@ pub async fn process_slots_without_shard_header_confirmation(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
@@ -691,6 +771,8 @@ pub async fn process_slots_without_shard_header_confirmation(
         ),
     );
     let mut simulator = simulator.lock().await;
+    let mut config = config.lock().await;
+    config.auto = false;
     match simulator.process_slots_without_shard_header_confirmation(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -702,6 +784,7 @@ pub async fn process_slots_without_shard_header_confirmation(
 pub fn simulator_slot_process_without_beacon_chain_finality(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path!(
@@ -709,6 +792,7 @@ pub fn simulator_slot_process_without_beacon_chain_finality(
         ))
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
+        .and(with_config(config))
         .and_then(process_slots_without_beacon_chain_finality)
 }
 
@@ -716,6 +800,7 @@ pub async fn process_slots_without_beacon_chain_finality(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
@@ -726,6 +811,8 @@ pub async fn process_slots_without_beacon_chain_finality(
         ),
     );
     let mut simulator = simulator.lock().await;
+    let mut config = config.lock().await;
+    config.auto = false;
     match simulator.process_slots_without_beacon_chain_finality(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -737,6 +824,7 @@ pub async fn process_slots_without_beacon_chain_finality(
 pub fn simulator_slot_process_without_beacon_block_proposal(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path!(
@@ -744,6 +832,7 @@ pub fn simulator_slot_process_without_beacon_block_proposal(
         ))
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
+        .and(with_config(config))
         .and_then(process_slots_without_beacon_block_proposal)
 }
 
@@ -751,6 +840,7 @@ pub async fn process_slots_without_beacon_block_proposal(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
@@ -761,6 +851,8 @@ pub async fn process_slots_without_beacon_block_proposal(
         ),
     );
     let mut simulator = simulator.lock().await;
+    let mut config = config.lock().await;
+    config.auto = false;
     match simulator.process_slots_without_beacon_block_proposal(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -772,11 +864,13 @@ pub async fn process_slots_without_beacon_block_proposal(
 pub fn simulator_slot_process_random(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path!("simulator" / "slot" / "process_random" / Slot))
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
+        .and(with_config(config))
         .and_then(process_slots_random)
 }
 
@@ -784,6 +878,7 @@ pub async fn process_slots_random(
     slot: Slot,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
+    config: SharedConfig,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(
@@ -791,6 +886,8 @@ pub async fn process_slots_random(
         format!("POST /simulator/slot/process_random/{}", slot),
     );
     let mut simulator = simulator.lock().await;
+    let mut config = config.lock().await;
+    config.auto = false;
     match simulator.process_slots_random(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
