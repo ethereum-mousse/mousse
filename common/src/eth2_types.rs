@@ -4,7 +4,7 @@ use crate::eth2_config::*;
 use crate::eth2_utils::{calculate_hash, root};
 pub use ethereum_types::{H256, U256};
 use serde_derive::{Deserialize, Serialize};
-pub use ssz_types::{typenum, VariableList};
+pub use ssz_types::{typenum, FixedVector, VariableList};
 use std::hash::{Hash, Hasher};
 
 big_array! { BigArray; }
@@ -206,6 +206,9 @@ pub struct BeaconState {
     /// The length is MAX_SHARD_HEADERS * SLOTS_PER_EPOCH.
     pub previous_epoch_pending_shard_headers: VariableList<PendingShardHeader, typenum::U8192>,
     pub current_epoch_pending_shard_headers: VariableList<PendingShardHeader, typenum::U8192>,
+    /// `Vector[Vector[DataCommitment, SLOTS_PER_EPOCH], SHARD_NUM]`
+    pub grandparent_epoch_confirmed_commitments:
+        FixedVector<FixedVector<DataCommitment, typenum::U32>, typenum::U64>,
     pub shard_gasprice: Gwei,
 }
 
@@ -231,8 +234,24 @@ impl BeaconState {
             finalized_checkpoint: Checkpoint::genesis_finalized_checkpoint(),
             previous_epoch_pending_shard_headers: VariableList::from(Vec::new()),
             current_epoch_pending_shard_headers: VariableList::from(Vec::new()),
+            grandparent_epoch_confirmed_commitments: Self::default_confirmed_commitments(),
             shard_gasprice: INIT_SHARD_GASPRICE,
         }
+    }
+
+    pub fn default_confirmed_commitments(
+    ) -> FixedVector<FixedVector<DataCommitment, typenum::U32>, typenum::U64> {
+        FixedVector::from(
+            (0..SHARD_NUM)
+                .map(|_| {
+                    FixedVector::from(
+                        (0..SLOTS_PER_EPOCH)
+                            .map(|_| DataCommitment::default())
+                            .collect::<Vec<DataCommitment>>(),
+                    )
+                })
+                .collect::<Vec<FixedVector<DataCommitment, typenum::U32>>>(),
+        )
     }
 }
 
@@ -275,6 +294,7 @@ mod tests {
                     })
                     .collect::<Vec<PendingShardHeader>>(),
             ),
+            grandparent_epoch_confirmed_commitments: BeaconState::default_confirmed_commitments(),
             shard_gasprice: 0,
         };
         let block1 = BeaconBlock {
@@ -295,6 +315,7 @@ mod tests {
                     })
                     .collect::<Vec<PendingShardHeader>>(),
             ),
+            grandparent_epoch_confirmed_commitments: BeaconState::default_confirmed_commitments(),
             shard_gasprice: 0,
         };
         let block2 = BeaconBlock {
@@ -323,6 +344,7 @@ mod tests {
                     })
                     .collect::<Vec<PendingShardHeader>>(),
             ),
+            grandparent_epoch_confirmed_commitments: BeaconState::default_confirmed_commitments(),
             shard_gasprice: 0,
         };
         let another_block2 = BeaconBlock {
