@@ -156,6 +156,7 @@ const SlotProcessor = ({ className, ...rest }) => {
                   error
                   id="slot"
                   type="number"
+                  inputProps={{ min: 0 }}
                   label="Slot"
                   placeholder="0"
                   margin="normal"
@@ -168,6 +169,7 @@ const SlotProcessor = ({ className, ...rest }) => {
                 <TextField
                   id="slot"
                   type="number"
+                  inputProps={{ min: 0 }}
                   label="Slot"
                   placeholder="0"
                   margin="normal"

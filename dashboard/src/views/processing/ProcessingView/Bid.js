@@ -192,6 +192,7 @@ const Bid = ({ className, ...rest }) => {
                 <TextField
                   label="Shard"
                   type="number"
+                  inputProps={{ min: 0 }}
                   margin="normal"
                   padding="normal"
                   name="shard"
@@ -202,6 +203,7 @@ const Bid = ({ className, ...rest }) => {
                 <TextField
                   label="Slot"
                   type="number"
+                  inputProps={{ min: 0 }}
                   margin="normal"
                   padding="normal"
                   name="slot"
