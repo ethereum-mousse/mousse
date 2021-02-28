@@ -18,7 +18,7 @@ servers:
   - url: 'http://localhost:3030'
     description: ''
 paths:
-  /shard/bid:
+  '/shard/{shard}/bid':
     parameters: []
     post:
       summary: Publish Bid
@@ -64,7 +64,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Bid'
+              $ref: '#/components/schemas/Config'
             examples: {}
         description: ''
       description: |
@@ -88,7 +88,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Bid'
+              $ref: '#/components/schemas/Config'
             examples: {}
         description: ''
       description: |
