@@ -162,7 +162,7 @@ const SlotProcessor = ({ className, ...rest }) => {
                   onChange={handleChangeSlot}
                   variant="outlined"
                   helperText="Invalid slot."
-                  value={slot + 1}
+                  defaultValue={slot}
                 />
                 :
                 <TextField
@@ -173,7 +173,7 @@ const SlotProcessor = ({ className, ...rest }) => {
                   margin="normal"
                   onChange={handleChangeSlot}
                   variant="outlined"
-                  value={slot}
+                  defaultValue={slot}
                 />
               }
             </Grid>
