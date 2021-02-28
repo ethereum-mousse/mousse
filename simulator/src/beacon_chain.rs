@@ -114,7 +114,11 @@ impl BeaconChain {
         // Inherit the current pending shard headers to the next epoch.
         self.state.previous_epoch_pending_shard_headers =
             self.state.current_epoch_pending_shard_headers.clone();
+
         // Reset the current pending shard headers.
+        // TODO: Add "empty" headers for the case where no shard blob header is proposed.
+        // See `reset_pending_headers()` in the spec below..
+        // https://github.com/ethereum/eth2.0-specs/blob/069fbd7b910410ef47a9fb7a1e4839ac32f39929/specs/phase1/beacon-chain.md#pending-headers
         self.state.current_epoch_pending_shard_headers = VariableList::from(Vec::new());
 
         // Reset the shard headers pool.
