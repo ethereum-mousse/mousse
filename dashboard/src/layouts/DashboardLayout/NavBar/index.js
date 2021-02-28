@@ -9,9 +9,9 @@ import {
 } from '@material-ui/core';
 import {
   Copy as BlocksIcon,
-  Hash as StatesIcon,
+  Database as StatesIcon,
   FastForward as ProcessingIcon,
-  Inbox as LogsIcon,
+  Archive as LogsIcon,
   Settings as SettingsIcon,
   // BarChart as BarChartIcon,
 } from 'react-feather';

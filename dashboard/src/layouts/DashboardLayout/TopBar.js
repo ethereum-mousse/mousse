@@ -44,6 +44,9 @@ const TopBar = ({
       if (result.data) {
         rest.setCurrentSlot(result.data.slot);
       }
+      else {
+        rest.setCurrentSlot(0);
+      }
     };
 
     const interval = setInterval(fetchData, 1000);
