@@ -66,7 +66,7 @@ async fn main() {
     let matches = App::from(yaml).get_matches();
 
     let mut config = Config::default();
-    if matches.values_of("auto").is_some() {
+    if matches.is_present("auto") {
         config.auto = true;
 
         if let Some(val) = matches.value_of("slot-time") {
