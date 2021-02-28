@@ -19,17 +19,13 @@ pub use common::eth2_types::*;
 pub type SharedSimulator = Arc<Mutex<Simulator>>;
 
 /// Config for the auto mode.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Config {
     auto: bool,
     /// Slot time in seconds.
     slot_time: u64,
     /// Failure rate in the simulation.
     failure_rate: f32,
-    /// The time when the auto mode started.
-    start_time: time::Instant,
-    /// The number of slots processed after the auto mode started.
-    processed_slot: u32,
 }
 
 impl Default for Config {
@@ -38,13 +34,37 @@ impl Default for Config {
             auto: false,
             slot_time: SECONDS_PER_SLOT,
             failure_rate: 0.0,
+        }
+    }
+}
+/// Extended config for the auto mode.
+#[derive(Clone)]
+pub struct ExtendedConfig {
+    config: Config,
+    /// The time when the auto mode started.
+    start_time: time::Instant,
+    /// The number of slots processed after the auto mode started.
+    processed_slot: u32,
+}
+
+impl Default for ExtendedConfig {
+    fn default() -> Self {
+        Self {
+            config: Config::default(),
             start_time: time::Instant::now(),
             processed_slot: 0,
         }
     }
 }
 
-pub type SharedConfig = Arc<Mutex<Config>>;
+impl ExtendedConfig {
+    fn restart_auto(&mut self) {
+        self.start_time = time::Instant::now();
+        self.processed_slot = 0;
+    }
+}
+
+pub type SharedConfig = Arc<Mutex<ExtendedConfig>>;
 
 #[derive(Serialize, Clone)]
 pub struct RequestLog {
@@ -65,12 +85,12 @@ async fn main() {
     let yaml = load_yaml!("cli.yaml");
     let matches = App::from(yaml).get_matches();
 
-    let mut config = Config::default();
+    let mut config = ExtendedConfig::default();
     if matches.is_present("auto") {
-        config.auto = true;
+        config.config.auto = true;
 
         if let Some(val) = matches.value_of("slot-time") {
-            config.slot_time = val.parse().expect("SLOT_TIME must be `u64`.");
+            config.config.slot_time = val.parse().expect("SLOT_TIME must be `u64`.");
         }
 
         if let Some(val) = matches.value_of("failure-rate") {
@@ -79,7 +99,7 @@ async fn main() {
                 (0.0..=1.0).contains(&failure_rate),
                 "FAILURE_RATE must be a positive float <= 1.0."
             );
-            config.failure_rate = failure_rate;
+            config.config.failure_rate = failure_rate;
         }
         println!("Simulator started in auto mode.");
     } else {
@@ -119,9 +139,9 @@ async fn process_auto(simulator: SharedSimulator, config: SharedConfig) {
     let ten_millis = time::Duration::from_millis(10);
     loop {
         let mut config = config.lock().await;
-        let next_slot_time =
-            config.start_time + time::Duration::from_secs(config.slot_time) * config.processed_slot;
-        if !config.auto || time::Instant::now() < next_slot_time {
+        let next_slot_time = config.start_time
+            + time::Duration::from_secs(config.config.slot_time) * config.processed_slot;
+        if !config.config.auto || time::Instant::now() < next_slot_time {
             // Wait 0.01 seconds.
             thread::sleep(ten_millis);
             continue;
@@ -130,7 +150,7 @@ async fn process_auto(simulator: SharedSimulator, config: SharedConfig) {
         let slot = simulator.slot;
         println!("Auto processing. Slot {}", slot);
         let mut rng = rand::thread_rng();
-        if rng.gen_range(0.0..1.0) < config.failure_rate {
+        if rng.gen_range(0.0..1.0) < config.config.failure_rate {
             // TODO: Remove happy case from `process_random`.
             simulator.process_slots_random(slot);
         } else {
@@ -567,27 +587,6 @@ pub async fn publish_bid_with_data(
     }
 }
 
-/// Config to display.
-/// Note: Use this for GET API since `Config.start_time` is not serializable.
-#[derive(Clone, Serialize, Deserialize)]
-pub struct BaseConfig {
-    auto: bool,
-    /// Slot time in seconds.
-    slot_time: u64,
-    /// Failure rate in the simulation.
-    failure_rate: f32,
-}
-
-impl BaseConfig {
-    fn from_config(config: &Config) -> Self {
-        Self {
-            auto: config.auto,
-            slot_time: config.slot_time,
-            failure_rate: config.failure_rate,
-        }
-    }
-}
-
 /// GET /config
 pub fn config_get(
     request_logs: SharedRequestLogs,
@@ -607,7 +606,7 @@ pub async fn get_config(
     let mut request_logs = request_logs.lock().await;
     log(&mut request_logs, String::from("GET /config"));
     let config = config.lock().await;
-    Ok(warp::reply::json(&BaseConfig::from_config(&config)))
+    Ok(warp::reply::json(&config.config))
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -642,24 +641,22 @@ pub async fn set_config(
 
     let mut config = config.lock().await;
     if let Some(auto) = config_options.auto {
-        config.auto = auto;
+        config.config.auto = auto;
     }
     if let Some(slot_time) = config_options.slot_time {
-        config.slot_time = slot_time;
+        config.config.slot_time = slot_time;
     }
     if let Some(failure_rate) = config_options.failure_rate {
-        config.failure_rate = failure_rate;
+        config.config.failure_rate = failure_rate;
         if !(0.0..=1.0).contains(&failure_rate) {
             return Err(config_set_error(ConfigError::InvalidFailureRate {
                 found: failure_rate,
             }));
         }
     }
-
-    if config.auto {
+    if config.config.auto {
         // Reset these time variables when new config is set.
-        config.processed_slot = 0;
-        config.start_time = time::Instant::now();
+        config.restart_auto();
     }
 
     Ok(StatusCode::OK)
@@ -690,7 +687,7 @@ pub async fn init_simulator(
     let mut simulator = simulator.lock().await;
     simulator.init();
     let mut config = config.lock().await;
-    config.auto = false;
+    config.restart_auto();
     Ok(StatusCode::OK)
 }
 
@@ -722,7 +719,7 @@ pub async fn process_slots(
     );
     let mut simulator = simulator.lock().await;
     let mut config = config.lock().await;
-    config.auto = false;
+    config.restart_auto();
     match simulator.process_slots_happy(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -762,7 +759,7 @@ pub async fn process_slots_without_shard_data_inclusion(
     );
     let mut simulator = simulator.lock().await;
     let mut config = config.lock().await;
-    config.auto = false;
+    config.restart_auto();
     match simulator.process_slots_without_shard_data_inclusion(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -802,7 +799,7 @@ pub async fn process_slots_without_shard_blob_proposal(
     );
     let mut simulator = simulator.lock().await;
     let mut config = config.lock().await;
-    config.auto = false;
+    config.restart_auto();
     match simulator.process_slots_without_shard_blob_proposal(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -842,7 +839,7 @@ pub async fn process_slots_without_shard_header_inclusion(
     );
     let mut simulator = simulator.lock().await;
     let mut config = config.lock().await;
-    config.auto = false;
+    config.restart_auto();
     match simulator.process_slots_without_shard_header_inclusion(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -882,7 +879,7 @@ pub async fn process_slots_without_shard_header_confirmation(
     );
     let mut simulator = simulator.lock().await;
     let mut config = config.lock().await;
-    config.auto = false;
+    config.restart_auto();
     match simulator.process_slots_without_shard_header_confirmation(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -922,7 +919,7 @@ pub async fn process_slots_without_beacon_chain_finality(
     );
     let mut simulator = simulator.lock().await;
     let mut config = config.lock().await;
-    config.auto = false;
+    config.restart_auto();
     match simulator.process_slots_without_beacon_chain_finality(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -962,7 +959,7 @@ pub async fn process_slots_without_beacon_block_proposal(
     );
     let mut simulator = simulator.lock().await;
     let mut config = config.lock().await;
-    config.auto = false;
+    config.restart_auto();
     match simulator.process_slots_without_beacon_block_proposal(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
@@ -997,7 +994,7 @@ pub async fn process_slots_random(
     );
     let mut simulator = simulator.lock().await;
     let mut config = config.lock().await;
-    config.auto = false;
+    config.restart_auto();
     match simulator.process_slots_random(slot) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),

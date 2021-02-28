@@ -9,7 +9,7 @@ args:
         value_name: PORT
         takes_value: true
     - auto:
-        about: "Running simulator in auto mode. Default: manual mode."
+        about: "Running simulator in auto mode. Default: false."
         long: auto
     - slot-time:
         about: "Slot time in seconds for the auto mode. Default: 12."
