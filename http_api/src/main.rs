@@ -143,7 +143,7 @@ async fn process_auto(simulator: SharedSimulator, config: SharedConfig) {
 pub fn filters(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
-    shared_config: SharedConfig,
+    config: SharedConfig,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     root()
         .or(beacon_blocks(simulator.clone(), request_logs.clone()))
@@ -162,51 +162,52 @@ pub fn filters(
             simulator.clone(),
             request_logs.clone(),
         ))
-        .or(config(request_logs.clone(), shared_config.clone()))
+        .or(config_get(request_logs.clone(), config.clone()))
+        .or(config_set(request_logs.clone(), config.clone()))
         .or(simulator_init(
             simulator.clone(),
             request_logs.clone(),
-            shared_config.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process(
             simulator.clone(),
             request_logs.clone(),
-            shared_config.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_without_shard_data_inclusion(
             simulator.clone(),
             request_logs.clone(),
-            shared_config.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_without_shard_blob_proposal(
             simulator.clone(),
             request_logs.clone(),
-            shared_config.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_without_shard_header_inclusion(
             simulator.clone(),
             request_logs.clone(),
-            shared_config.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_without_shard_header_confirmation(
             simulator.clone(),
             request_logs.clone(),
-            shared_config.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_without_beacon_chain_finality(
             simulator.clone(),
             request_logs.clone(),
-            shared_config.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_without_beacon_block_proposal(
             simulator.clone(),
             request_logs.clone(),
-            shared_config.clone(),
+            config.clone(),
         ))
         .or(simulator_slot_process_random(
             simulator,
             request_logs.clone(),
-            shared_config,
+            config,
         ))
         .or(utils_data_commitment(request_logs.clone()))
         .or(utils_request_logs(request_logs))
@@ -566,6 +567,49 @@ pub async fn publish_bid_with_data(
     }
 }
 
+/// Config to display.
+/// Note: Use this for GET API since `Config.start_time` is not serializable.
+#[derive(Clone, Serialize, Deserialize)]
+pub struct BaseConfig {
+    auto: bool,
+    // Slot time in seconds.
+    slot_time: u64,
+    // Failure rate in the simulation.
+    failure_rate: f32,
+}
+
+impl BaseConfig {
+    fn from_config(config: &Config) -> Self {
+        Self {
+            auto: config.auto,
+            slot_time: config.slot_time,
+            failure_rate: config.failure_rate,
+        }
+    }
+}
+
+/// GET /config
+pub fn config_get(
+    request_logs: SharedRequestLogs,
+    config: SharedConfig,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::get()
+        .and(warp::path!("config"))
+        .and(with_request_logs(request_logs))
+        .and(with_config(config))
+        .and_then(get_config)
+}
+
+pub async fn get_config(
+    request_logs: SharedRequestLogs,
+    config: SharedConfig,
+) -> Result<impl warp::Reply, Infallible> {
+    let mut request_logs = request_logs.lock().await;
+    log(&mut request_logs, String::from("GET /config"));
+    let config = config.lock().await;
+    Ok(warp::reply::json(&BaseConfig::from_config(&config)))
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ConfigOptions {
     auto: Option<bool>,
@@ -574,7 +618,7 @@ pub struct ConfigOptions {
 }
 /// POST /config
 /// $ curl -X POST -d '{"auto":true, "slot_time":1,"failure_rate":0}' -H 'Content-Type: application/json' http://localhost:3030/config
-pub fn config(
+pub fn config_set(
     request_logs: SharedRequestLogs,
     config: SharedConfig,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -613,6 +657,7 @@ pub async fn set_config(
     }
 
     // Auto processing restarts when new config is set.
+    // TODO: Reset these if an donly if `config.auto`.
     config.processed_slot = 0;
     config.start_time = time::Instant::now();
 

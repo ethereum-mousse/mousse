@@ -45,10 +45,34 @@ paths:
         Assume the receiving node broadcast to the corresponding shard.
       tags:
         - Shards
-  /cnofig:
+  /config:
     parameters: []
+    get:
+      summary: Get Config
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+        '404':
+          description: Not Found
+      operationId: config
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Bid'
+            examples: {}
+        description: ''
+      description: |
+        Config for auto mode.
+      tags:
+        - Config
     post:
-      summary: Config
+      summary: Set Config
       responses:
         '200':
           description: OK
@@ -497,6 +521,16 @@ components:
           type: integer
         root:
           type: integer
+    Config:
+      title: Config
+      type: object
+      properties:
+        auto:
+          type: boolean
+        slot:
+          type: integer
+        failure_rate:
+          type: number
 tags:
   - name: Beacon
     description: Query to a virtual beacon node.
