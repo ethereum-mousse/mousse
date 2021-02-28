@@ -22,13 +22,13 @@ pub type SharedSimulator = Arc<Mutex<Simulator>>;
 #[derive(Clone)]
 pub struct Config {
     auto: bool,
-    // Slot time in seconds.
+    /// Slot time in seconds.
     slot_time: u64,
-    // Failure rate in the simulation.
+    /// Failure rate in the simulation.
     failure_rate: f32,
-    // The time when the auto mode started.
+    /// The time when the auto mode started.
     start_time: time::Instant,
-    // The number of slots processed after the auto mode started.
+    /// The number of slots processed after the auto mode started.
     processed_slot: u32,
 }
 
@@ -572,9 +572,9 @@ pub async fn publish_bid_with_data(
 #[derive(Clone, Serialize, Deserialize)]
 pub struct BaseConfig {
     auto: bool,
-    // Slot time in seconds.
+    /// Slot time in seconds.
     slot_time: u64,
-    // Failure rate in the simulation.
+    /// Failure rate in the simulation.
     failure_rate: f32,
 }
 
