@@ -36,21 +36,23 @@ async fn main() {
     let yaml = load_yaml!("cli.yaml");
     let matches = App::from(yaml).get_matches();
 
-    let simulator = if let Some(mut vals) = matches.values_of("auto") {
-        let slot_time = vals
-            .next()
-            .unwrap_or(&format!("{}", SECONDS_PER_SLOT))
-            .parse()
-            .expect("SLOT_TIME must be `u64`.");
-        let failure_rate = vals
-            .next()
-            .unwrap_or("1.0")
-            .parse()
-            .expect("FAILURE_RATE must be `f32`.");
+    let simulator = if matches.values_of("auto").is_some() {
+        let slot_time: u64 = if let Some(val) = matches.value_of("slot-time") {
+            val.parse().expect("SLOT_TIME must be `u64`.")
+        } else {
+            SECONDS_PER_SLOT
+        };
+
+        let failure_rate: f32 = if let Some(val) = matches.value_of("failure-rate") {
+            val.parse().expect("FAILURE_RATE must be `f32`.")
+        } else {
+            0.0
+        };
         assert!(
             (0.0..=1.0).contains(&failure_rate),
             "FAILURE_RATE must be a positive float <= 1.0."
         );
+
         let shared_simulator = Arc::new(Mutex::new(Simulator::new()));
 
         let simulator = shared_simulator.clone();

@@ -9,9 +9,17 @@ args:
         value_name: PORT
         takes_value: true
     - auto:
-        about: "Running simulator in auto mode with (SLOT_TIME, FAILURE_RATE). Default: (12, 1.0)."
+        about: "Running simulator in auto mode."
         long: auto
-        value_names:
-            - SLOT_TIME
-            - FAILURE_RATE
-        takes_value: false
+    - slot-time:
+        about: "Slot time in seconds for the auto mode. Default: 12."
+        long: slot-time
+        value_name: SLOT_TIME
+        takes_value: true
+        requires: auto
+    - failure-rate:
+        about: "Failure rate for the auto mode. Default: 0."
+        long: failure-rate
+        value_name: FAILURE_RATE
+        takes_value: true
+        requires: auto
