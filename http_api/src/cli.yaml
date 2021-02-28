@@ -6,20 +6,24 @@ args:
     - port:
         about: "Port number to listen on. Default: 3030."
         long: port 
+        short: p
         value_name: PORT
         takes_value: true
     - auto:
         about: "Running simulator in auto mode. Default: false."
         long: auto
+        short: a
     - slot-time:
         about: "Slot time in seconds for the auto mode. Default: 12."
         long: slot-time
+        short: s
         value_name: SLOT_TIME
         takes_value: true
         requires: auto
     - failure-rate:
         about: "Failure rate for the auto mode. Default: 0."
         long: failure-rate
+        short: f
         value_name: FAILURE_RATE
         takes_value: true
         requires: auto
