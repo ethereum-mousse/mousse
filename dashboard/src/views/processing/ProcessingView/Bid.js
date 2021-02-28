@@ -183,7 +183,7 @@ const Bid = ({ className, ...rest }) => {
                   name="shard"
                   onChange={handleChangeShard}
                   variant="outlined"
-                  value={shard}
+                  defaultValue={shard}
                 />
                 <TextField
                   label="Slot"
@@ -193,7 +193,7 @@ const Bid = ({ className, ...rest }) => {
                   name="slot"
                   onChange={handleChangeSlot}
                   variant="outlined"
-                  value={slot}
+                  defaultValue={rest.current_slot + 1}
                 />
                 <TextField
                   label="Fee (Gwei)"
@@ -201,7 +201,7 @@ const Bid = ({ className, ...rest }) => {
                   name="fee"
                   onChange={handleChangeFee}
                   variant="outlined"
-                  value={fee}
+                  defaultValue={fee}
                 />
               </FormControl>
 
