@@ -96,7 +96,7 @@ const SlotProcessor = ({ className, ...rest }) => {
           rest.setSuccessOpen(true);
         }
         else {
-          response.json().then(() => {
+          response.json().then(response => {
             console.log("Error:", JSON.stringify(response));
           })
         }
@@ -118,7 +118,7 @@ const SlotProcessor = ({ className, ...rest }) => {
           rest.setSuccessOpen(true);
         }
         else {
-          response.json().then(() => {
+          response.json().then(response => {
             console.log("Error:", JSON.stringify(response));
           })
         }
