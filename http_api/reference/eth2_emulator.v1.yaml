@@ -18,7 +18,7 @@ servers:
   - url: 'http://localhost:3030'
     description: ''
 paths:
-  /data_market/bid:
+  '/shard/{shard}/bid':
     parameters: []
     post:
       summary: Publish Bid
@@ -44,7 +44,57 @@ paths:
         Publish a bid. 
         Assume the receiving node broadcast to the corresponding shard.
       tags:
-        - DataMarket
+        - Shards
+  /config:
+    parameters: []
+    get:
+      summary: Get Config
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+        '404':
+          description: Not Found
+      operationId: config
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Config'
+            examples: {}
+        description: ''
+      description: |
+        Config for auto mode.
+      tags:
+        - Config
+    post:
+      summary: Set Config
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+        '404':
+          description: Not Found
+      operationId: config
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Config'
+            examples: {}
+        description: ''
+      description: |
+        Config for auto mode.
+      tags:
+        - Config
   '/shards/{shard}/headers/{slot}':
     parameters:
       - schema:
@@ -471,14 +521,24 @@ components:
           type: integer
         root:
           type: integer
+    Config:
+      title: Config
+      type: object
+      properties:
+        auto:
+          type: boolean
+        slot:
+          type: integer
+        failure_rate:
+          type: number
 tags:
   - name: Beacon
     description: Query to a virtual beacon node.
   - name: Shards
     description: Query to a virtual shard node.
-  - name: DataMarket
-    description: Query to a virtual data market node.
   - name: Simulator
     description: Query to a virtual eth2 simulator.
   - name: Utils
-    description: Useful function endpoints
+    description: Useful function endpoints.
+  - name: Config
+    description: Endpoints for emulator configuration.
