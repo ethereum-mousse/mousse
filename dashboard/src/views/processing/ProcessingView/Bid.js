@@ -54,8 +54,15 @@ const Bid = ({ className, ...rest }) => {
   };
 
   const [slot, setSlot] = useState(rest.current_slot + 1);
+  const [slot_invalid, setSlotInvalid] = useState(false);
   const handleChangeSlot = (event) => {
     setSlot(event.target.value);
+    if (rest.current_slot === null || event.target.value > rest.current_slot) {
+      setSlotInvalid(false);
+    }
+    else {
+      setSlotInvalid(true);
+    }
   };
 
   const [point, setPoint] = useState("0x0");
@@ -192,6 +199,7 @@ const Bid = ({ className, ...rest }) => {
                 <TextField
                   label="Shard"
                   type="number"
+                  inputProps={{ min: 0 }}
                   margin="normal"
                   padding="normal"
                   name="shard"
@@ -199,16 +207,33 @@ const Bid = ({ className, ...rest }) => {
                   variant="outlined"
                   defaultValue={shard}
                 />
-                <TextField
-                  label="Slot"
-                  type="number"
-                  margin="normal"
-                  padding="normal"
-                  name="slot"
-                  onChange={handleChangeSlot}
-                  variant="outlined"
-                  defaultValue={rest.current_slot + 1}
-                />
+                {slot_invalid ?
+                  <TextField
+                    label="Slot"
+                    type="number"
+                    inputProps={{ min: 0 }}
+                    margin="normal"
+                    padding="normal"
+                    name="slot"
+                    onChange={handleChangeSlot}
+                    variant="outlined"
+                    defaultValue={rest.current_slot + 1}
+                    error
+                    helperText="Invalid slot."
+                  />
+                  :
+                  <TextField
+                    label="Slot"
+                    type="number"
+                    inputProps={{ min: 0 }}
+                    margin="normal"
+                    padding="normal"
+                    name="slot"
+                    onChange={handleChangeSlot}
+                    variant="outlined"
+                    defaultValue={rest.current_slot + 1}
+                  />
+                }
                 <TextField
                   label="Fee (Gwei)"
                   margin="normal"
