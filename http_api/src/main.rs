@@ -685,7 +685,10 @@ pub async fn init_simulator(
     let mut request_logs = request_logs.lock().await;
     log(&mut request_logs, String::from("POST /simulator/init"));
     let mut simulator = simulator.lock().await;
-    simulator.init();
+    *simulator = Simulator::new();
+    // Process the genesis slot.
+    simulator.process_slots_happy(0);
+    println!("Simulator initiated. Slot 0 is automatically processed.");
     let mut config = config.lock().await;
     config.restart_auto();
     Ok(StatusCode::OK)
