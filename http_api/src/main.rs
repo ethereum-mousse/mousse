@@ -656,10 +656,11 @@ pub async fn set_config(
         }
     }
 
-    // Auto processing restarts when new config is set.
-    // TODO: Reset these if an donly if `config.auto`.
-    config.processed_slot = 0;
-    config.start_time = time::Instant::now();
+    if config.auto {
+        // Reset these time variables when new config is set.
+        config.processed_slot = 0;
+        config.start_time = time::Instant::now();
+    }
 
     Ok(StatusCode::OK)
 }
