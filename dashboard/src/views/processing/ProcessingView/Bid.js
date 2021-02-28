@@ -73,12 +73,19 @@ const Bid = ({ className, ...rest }) => {
     setFee(event.target.value);
   };
 
-  const toBase64 = file => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result.replace(/data:.*\/.*;base64,/, ''));
-    reader.onerror = error => reject(error);
-  });
+  const toBase64 = async file => {
+    let array_buffer = await file.arrayBuffer();
+    // The following code is caught in the stack limit:
+    //   let base64_string = btoa(String.fromCharCode(...new Uint8Array(array_buffer)));
+    // We need to use the for statement:
+    let uintArray = new Uint8Array(array_buffer);
+    let converted = "";
+    uintArray.forEach(byte => {
+      converted += String.fromCharCode(byte);
+    });
+    let base64_string = btoa(converted);
+    return base64_string;
+  };
 
   const [filename, setFilename] = useState("");
 
@@ -103,10 +110,17 @@ const Bid = ({ className, ...rest }) => {
         "Content-Type": "application/json"
       }
     })
-      .then(response => response.json())
-      .then(commitment => {
-        setPoint("0x" + bytesToHex(commitment.point));
-        setLength(commitment.length);
+      .then(response => {
+        if (response.status === 200) {
+          console.log("Success");
+          response.json().then(commitment => {
+            setPoint("0x" + bytesToHex(commitment.point));
+            setLength(commitment.length);
+          })
+        }
+        else {
+          console.log("Error:", JSON.stringify(response));
+        }
       })
       .catch(error => console.error("Error:", error));
   };
@@ -143,7 +157,7 @@ const Bid = ({ className, ...rest }) => {
           rest.setSuccessOpen(true);
         }
         else {
-          response.json().then(() => {
+          response.json().then(response => {
             console.log("Error:", JSON.stringify(response));
           })
         }

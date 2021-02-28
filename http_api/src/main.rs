@@ -796,7 +796,7 @@ pub fn utils_data_commitment(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path!("utils" / "data_commitment"))
-        .and(warp::body::content_length_limit(1024 * 1024))
+        // .and(warp::body::content_length_limit(1024 * 1024))
         .and(warp::body::json())
         .and(with_request_logs(request_logs))
         .and_then(get_utils_data_commitment)
