@@ -162,6 +162,22 @@ impl Simulator {
         self.shards[bid.shard as usize].publish_bid(bid);
         Ok(())
     }
+
+    /// Submit a bid with data.
+    pub fn publish_bid_with_data(
+        &mut self,
+        bid: Bid,
+        data: &[u8],
+    ) -> Result<(), BidPublicationError> {
+        let commitment = DataCommitment::dummy_from_bytes(data);
+        if bid.commitment != commitment {
+            return Err(BidPublicationError::InvalidCommitment {
+                expect: commitment,
+                found: bid.commitment,
+            });
+        }
+        self.publish_bid(bid)
+    }
 }
 
 impl Default for simulator::Simulator {

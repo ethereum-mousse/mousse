@@ -521,7 +521,7 @@ pub async fn get_finalized_checkpoint(
 }
 
 /// POST /shards/{shard}/bid
-/// $ curl -X POST -d '{"shard":0,"slot":0,"commitment":{"point":1337,"length":0},"fee":0}' -H 'Content-Type: application/json' http://localhost:3030/data_market/bid
+/// $ curl -X POST -d '{"shard":0,"slot":0,"commitment":{"point":1337,"length":0},"fee":0}' -H 'Content-Type: application/json' http://localhost:3030/shards/0/bid
 pub fn shards_bid(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
@@ -540,9 +540,19 @@ pub async fn publish_bid(
     bid: Bid,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
-) -> Result<impl warp::Reply, Infallible> {
+) -> Result<impl warp::Reply, warp::Rejection> {
     let mut request_logs = request_logs.lock().await;
     log(&mut request_logs, String::from("POST /shards/{shard}/bid"));
+
+    if _shard != bid.shard {
+        return Err(bid_publication_error(
+            simulator::BidPublicationError::InvalidShard {
+                expect: _shard,
+                found: bid.shard,
+            },
+        ));
+    }
+
     let mut simulator = simulator.lock().await;
     simulator.publish_bid(bid.clone());
     Ok(StatusCode::OK)
@@ -555,7 +565,7 @@ pub struct BidWithData {
 }
 
 /// POST /shards/{shard}/bid_with_data
-/// $ curl -X POST -d '{"shard":0,"slot":0,"commitment":{"point":1337,"length":0},"fee":0}' -H 'Content-Type: application/json' http://localhost:3030/data_market/bid
+/// $ curl -X POST -d '{"bid":{"shard":0,"slot":0,"commitment":{"point":1337,"length":0},"fee":0},"data":}' -H 'Content-Type: application/json' http://localhost:3030/shard/0/bid_with_data
 pub fn shards_bid_with_data(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
@@ -580,8 +590,16 @@ pub async fn publish_bid_with_data(
         &mut request_logs,
         String::from("POST /shards/{shard}/bid_with_data"),
     );
+    if _shard != bid_with_data.bid.shard {
+        return Err(bid_publication_error(
+            simulator::BidPublicationError::InvalidShard {
+                expect: _shard,
+                found: bid_with_data.bid.shard,
+            },
+        ));
+    }
     let mut simulator = simulator.lock().await;
-    match simulator.publish_bid(bid_with_data.bid.clone()) {
+    match simulator.publish_bid_with_data(bid_with_data.bid, &bid_with_data.data.into_bytes()) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(bid_publication_error(e)),
     }
