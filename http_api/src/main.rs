@@ -6,9 +6,8 @@ use eth2_simulator::simulator::Simulator;
 use rand::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::Infallible;
-use std::convert::TryFrom;
 use std::sync::Arc;
-use std::time;
+use std::{thread, time};
 use tokio::sync::Mutex;
 use warp::{http::StatusCode, reject, Filter};
 
@@ -89,12 +88,17 @@ async fn main() {
 
 async fn process_auto(simulator: SharedSimulator, slot_time: u64, failure_rate: f32) {
     let slot_time = time::Duration::from_secs(slot_time);
+    let ten_millis = time::Duration::from_millis(10);
+    // The number of slots processed after the auto mode started.
+    let mut processed_slot: u32 = 0;
     let start_time = time::Instant::now();
     loop {
-        let mut simulator = simulator.lock().await;
-        if time::Instant::now() < start_time + slot_time * u32::try_from(simulator.slot).unwrap() {
+        if time::Instant::now() < start_time + slot_time * processed_slot {
+            // Wait 0.01 seconds.
+            thread::sleep(ten_millis);
             continue;
         }
+        let mut simulator = simulator.lock().await;
         let slot = simulator.slot;
         println!("Auto processing. Slot {}", slot);
         let mut rng = rand::thread_rng();
@@ -104,6 +108,7 @@ async fn process_auto(simulator: SharedSimulator, slot_time: u64, failure_rate: 
         } else {
             simulator.process_slots_happy(slot);
         };
+        processed_slot += 1;
     }
 }
 
