@@ -8,6 +8,7 @@ use serde_derive::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::sync::Arc;
 use std::{thread, time};
+use thiserror::Error;
 use tokio::sync::Mutex;
 use warp::{http::StatusCode, reject, Filter};
 
@@ -17,11 +18,18 @@ pub use common::eth2_types::*;
 
 pub type SharedSimulator = Arc<Mutex<Simulator>>;
 
-#[derive(Serialize, Clone)]
+/// Config for the auto mode.
+#[derive(Clone)]
 pub struct Config {
     auto: bool,
+    // Slot time in seconds.
     slot_time: u64,
+    // Failure rate in the simulation.
     failure_rate: f32,
+    // The time when the auto mode started.
+    start_time: time::Instant,
+    // The number of slots processed after the auto mode started.
+    processed_slot: u32,
 }
 
 impl Default for Config {
@@ -30,6 +38,8 @@ impl Default for Config {
             auto: false,
             slot_time: SECONDS_PER_SLOT,
             failure_rate: 0.0,
+            start_time: time::Instant::now(),
+            processed_slot: 0,
         }
     }
 }
@@ -107,28 +117,11 @@ async fn main() {
 
 async fn process_auto(simulator: SharedSimulator, config: SharedConfig) {
     let ten_millis = time::Duration::from_millis(10);
-    // The time when the auto mode started.
-    let mut start_time = time::Instant::now();
-    // The number of slots processed after the auto mode started.
-    let mut processed_slot = 0;
-    // Whether `config.auto` was true in the last loop.
-    let mut last_is_auto = false;
     loop {
-        let config = config.lock().await;
-        if !config.auto {
-            last_is_auto = false;
-            // Wait 0.01 seconds.
-            thread::sleep(ten_millis);
-            continue;
-        }
-        if !last_is_auto {
-            // Reset these values at the first loop after the auto mode started.
-            processed_slot = 0;
-            start_time = time::Instant::now();
-            last_is_auto = true;
-        }
-        let slot_time = time::Duration::from_secs(config.slot_time);
-        if time::Instant::now() < start_time + slot_time * processed_slot {
+        let mut config = config.lock().await;
+        let next_slot_time =
+            config.start_time + time::Duration::from_secs(config.slot_time) * config.processed_slot;
+        if !config.auto || time::Instant::now() < next_slot_time {
             // Wait 0.01 seconds.
             thread::sleep(ten_millis);
             continue;
@@ -143,14 +136,14 @@ async fn process_auto(simulator: SharedSimulator, config: SharedConfig) {
         } else {
             simulator.process_slots_happy(slot);
         };
-        processed_slot += 1;
+        config.processed_slot += 1;
     }
 }
 
 pub fn filters(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
-    config: SharedConfig,
+    shared_config: SharedConfig,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     root()
         .or(beacon_blocks(simulator.clone(), request_logs.clone()))
@@ -169,50 +162,51 @@ pub fn filters(
             simulator.clone(),
             request_logs.clone(),
         ))
+        .or(config(request_logs.clone(), shared_config.clone()))
         .or(simulator_init(
             simulator.clone(),
             request_logs.clone(),
-            config.clone(),
+            shared_config.clone(),
         ))
         .or(simulator_slot_process(
             simulator.clone(),
             request_logs.clone(),
-            config.clone(),
+            shared_config.clone(),
         ))
         .or(simulator_slot_process_without_shard_data_inclusion(
             simulator.clone(),
             request_logs.clone(),
-            config.clone(),
+            shared_config.clone(),
         ))
         .or(simulator_slot_process_without_shard_blob_proposal(
             simulator.clone(),
             request_logs.clone(),
-            config.clone(),
+            shared_config.clone(),
         ))
         .or(simulator_slot_process_without_shard_header_inclusion(
             simulator.clone(),
             request_logs.clone(),
-            config.clone(),
+            shared_config.clone(),
         ))
         .or(simulator_slot_process_without_shard_header_confirmation(
             simulator.clone(),
             request_logs.clone(),
-            config.clone(),
+            shared_config.clone(),
         ))
         .or(simulator_slot_process_without_beacon_chain_finality(
             simulator.clone(),
             request_logs.clone(),
-            config.clone(),
+            shared_config.clone(),
         ))
         .or(simulator_slot_process_without_beacon_block_proposal(
             simulator.clone(),
             request_logs.clone(),
-            config.clone(),
+            shared_config.clone(),
         ))
         .or(simulator_slot_process_random(
             simulator,
             request_logs.clone(),
-            config.clone(),
+            shared_config,
         ))
         .or(utils_data_commitment(request_logs.clone()))
         .or(utils_request_logs(request_logs))
@@ -272,6 +266,9 @@ async fn handle_rejection(err: reject::Rejection) -> Result<impl warp::Reply, In
     } else if let Some(e) = err.find::<BidPublicationError>() {
         code = StatusCode::BAD_REQUEST;
         message = format!("BAD_REQUEST: {:?}", e);
+    } else if let Some(e) = err.find::<ConfigSetError>() {
+        code = StatusCode::BAD_REQUEST;
+        message = format!("BAD_REQUEST: {:?}", e);
     } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
         code = StatusCode::METHOD_NOT_ALLOWED;
         message = "METHOD_NOT_ALLOWED".into();
@@ -305,6 +302,20 @@ impl reject::Reject for BidPublicationError {}
 
 pub fn bid_publication_error(e: simulator::BidPublicationError) -> reject::Rejection {
     reject::custom(BidPublicationError(e))
+}
+
+#[derive(Error, Debug)]
+pub enum ConfigError {
+    #[error("Failure rate must be a positive integer <= 1.0 (found {found:?})")]
+    InvalidFailureRate { found: f32 },
+}
+#[derive(Debug)]
+pub struct ConfigSetError(pub ConfigError);
+
+impl reject::Reject for ConfigSetError {}
+
+pub fn config_set_error(e: ConfigError) -> reject::Rejection {
+    reject::custom(ConfigSetError(e))
 }
 
 /// GET /
@@ -553,6 +564,59 @@ pub async fn publish_bid_with_data(
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(bid_publication_error(e)),
     }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ConfigOptions {
+    auto: Option<bool>,
+    slot_time: Option<u64>,
+    failure_rate: Option<f32>,
+}
+/// POST /config
+/// $ curl -X POST -d '{"auto":true, "slot_time":1,"failure_rate":0}' -H 'Content-Type: application/json' http://localhost:3030/config
+pub fn config(
+    request_logs: SharedRequestLogs,
+    config: SharedConfig,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::post()
+        .and(warp::path!("config"))
+        .and(warp::body::content_length_limit(1024 * 1024))
+        .and(warp::body::json())
+        .and(with_request_logs(request_logs))
+        .and(with_config(config))
+        .and_then(set_config)
+}
+
+/// Note: Auto processing restarts when new config is set.
+pub async fn set_config(
+    config_options: ConfigOptions,
+    request_logs: SharedRequestLogs,
+    config: SharedConfig,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut request_logs = request_logs.lock().await;
+    log(&mut request_logs, String::from("POST /config"));
+
+    let mut config = config.lock().await;
+    if let Some(auto) = config_options.auto {
+        config.auto = auto;
+    }
+    if let Some(slot_time) = config_options.slot_time {
+        config.slot_time = slot_time;
+    }
+    if let Some(failure_rate) = config_options.failure_rate {
+        config.failure_rate = failure_rate;
+        if !(0.0..=1.0).contains(&failure_rate) {
+            return Err(config_set_error(ConfigError::InvalidFailureRate {
+                found: failure_rate,
+            }));
+        }
+    }
+
+    // Auto processing restarts when new config is set.
+    config.processed_slot = 0;
+    config.start_time = time::Instant::now();
+
+    Ok(StatusCode::OK)
 }
 
 /// POST /simulator/init

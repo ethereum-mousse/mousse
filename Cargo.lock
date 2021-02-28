@@ -872,6 +872,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_qs",
+ "thiserror",
  "tokio",
  "warp",
 ]
