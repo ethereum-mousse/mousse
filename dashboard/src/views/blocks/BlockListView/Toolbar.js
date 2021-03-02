@@ -10,6 +10,9 @@ import {
 
 const useStyles = makeStyles((theme) => ({
   root: {},
+  updateButton: {
+    marginRight: theme.spacing(1)
+  },
   importButton: {
     marginRight: theme.spacing(1)
   },
@@ -21,6 +24,10 @@ const useStyles = makeStyles((theme) => ({
 const Toolbar = ({ className, ...rest }) => {
   const classes = useStyles();
 
+  const handleUpdateClick = () => {
+    rest.updateBlocks(rest.count, rest.page);
+  };
+
   return (
     <div
       className={clsx(classes.root, className)}
@@ -30,12 +37,18 @@ const Toolbar = ({ className, ...rest }) => {
         display="flex"
         justifyContent="flex-end"
       >
-        <Button className={classes.importButton}>
+        <Button
+          className={classes.exportButton}
+          onClick={handleUpdateClick}
+        >
+          Update
+        </Button>
+        {/* <Button className={classes.importButton}>
           Import
         </Button>
         <Button className={classes.exportButton}>
           Export
-        </Button>
+        </Button> */}
       </Box>
       {/* <Box mt={3}>
         <Card>
