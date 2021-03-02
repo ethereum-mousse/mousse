@@ -57,8 +57,35 @@ const Results = ({ className, ...rest }) => {
     updateBlocks(count, page);
   }, []);
 
+  const slotToBlockRev = blocks => {
+    updateBlocks(count, page);
+    let slot_to_block = [];
+    if (blocks.length > 0) {
+      let block_id = 0;
+      let min_slot = Math.max(0, rest.current_slot - (page + 1) * count + 1);
+      let max_slot = rest.current_slot - page * count;
+      for (let slot = min_slot; slot <= max_slot; slot++) {
+        if (slot === blocks[block_id].slot) {
+          slot_to_block.push(blocks[block_id]);
+          block_id += 1;
+        }
+        else {
+          slot_to_block.push({
+            slot: slot,
+            parent_root: null,
+            state_root: null,
+            shard_headers: null,
+          });
+        }
+      }
+    }
+    let slot_to_block_rev = slot_to_block;
+    slot_to_block_rev.reverse();
+    return slot_to_block_rev;
+  }
+
   const updateBlocks = (count, page) => {
-    setUpdating(true);
+    // setUpdating(true);
     let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/beacon/blocks";
     let url = new URL(endpoint);
     let params = {
@@ -71,9 +98,11 @@ const Results = ({ className, ...rest }) => {
       method: "GET",
     })
       .then(response => response.json())
-      .then(blocks => {
-        setBlocks(blocks);
-        setUpdating(false);
+      .then(new_blocks => {
+        if (blocks != new_blocks) {
+          setBlocks(new_blocks);
+          // setUpdating(false);
+        }
       })
       .catch(error => console.error("Error:", error));
   }
@@ -100,7 +129,7 @@ const Results = ({ className, ...rest }) => {
   };
 
   const blockColorClassName = block => {
-    if (!updating && (block.state_root === null || block.shard_headers.length === 0)) {
+    if (block.state_root === null || block.shard_headers.length === 0) {
       return classes.table_row_red;
     }
     else {
@@ -108,28 +137,7 @@ const Results = ({ className, ...rest }) => {
     }
   };
 
-  let slot_to_block = [];
-  if (blocks.length > 0) {
-    let block_id = 0;
-    let min_slot = Math.max(0, rest.current_slot - (page + 1) * count + 1);
-    let max_slot = rest.current_slot - page * count;
-    for (let slot = min_slot; slot <= max_slot; slot++) {
-      if (slot === blocks[block_id].slot) {
-        slot_to_block.push(blocks[block_id]);
-        block_id += 1;
-      }
-      else {
-        slot_to_block.push({
-          slot: slot,
-          parent_root: null,
-          state_root: null,
-          shard_headers: null,
-        });
-      }
-    }
-  }
-  let slot_to_block_rev = slot_to_block;
-  slot_to_block_rev.reverse();
+
 
   return (
     <Card
@@ -157,7 +165,7 @@ const Results = ({ className, ...rest }) => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {slot_to_block_rev.slice(0, count).map((block, index) => (
+              {slotToBlockRev(blocks).slice(0, count).map((block, index) => (
                 <React.Fragment
                   key={index}>
                   <TableRow
