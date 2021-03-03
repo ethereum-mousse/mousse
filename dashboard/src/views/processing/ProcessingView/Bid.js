@@ -105,7 +105,7 @@ const Bid = ({ className, ...rest }) => {
     let encoded_file = await toBase64(event.target.files[0]);
     setEncodedFile(encoded_file);
 
-    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/utils/data_commitment";
+    let endpoint = "http://localhost:" + process.env.REACT_APP_EMULATOR_PORT_NUMBER + "/utils/data_commitment";
     let body = JSON.stringify({
       data: encoded_file
     });
@@ -137,7 +137,7 @@ const Bid = ({ className, ...rest }) => {
 
     let point_raw = hexToBytes(point.slice(2));
 
-    let endpoint = 'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/shards/' + shard + '/bid_with_data';
+    let endpoint = 'http://localhost:' + process.env.REACT_APP_EMULATOR_PORT_NUMBER + '/shards/' + shard + '/bid_with_data';
     let body = JSON.stringify({
       bid: {
         shard: parseInt(shard),

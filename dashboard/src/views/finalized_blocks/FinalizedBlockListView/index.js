@@ -27,7 +27,7 @@ const BlockListView = () => {
   const [page, setPage] = useState(0);
 
   const updateBlocks = (count, page) => {
-    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/beacon/finalized_blocks";
+    let endpoint = "http://localhost:" + process.env.REACT_APP_EMULATOR_PORT_NUMBER + "/beacon/finalized_blocks";
     let url = new URL(endpoint);
     let params = {
       count: count,

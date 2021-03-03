@@ -28,7 +28,7 @@ const StateListView = () => {
   const [page, setPage] = useState(0);
 
   const updateStates = (count, page) => {
-    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/beacon/states";
+    let endpoint = "http://localhost:" + process.env.REACT_APP_EMULATOR_PORT_NUMBER + "/beacon/states";
     let url = new URL(endpoint);
     let params = {
       count: count,

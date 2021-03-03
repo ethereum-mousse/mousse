@@ -39,7 +39,7 @@ const TopBar = ({
   useEffect(() => {
     const fetchData = async () => {
       const result = await axios(
-        'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/utils/current_status_for_polling'
+        'http://localhost:' + process.env.REACT_APP_EMULATOR_PORT_NUMBER + '/utils/current_status_for_polling'
       );
       let data = result.data;
 
@@ -84,7 +84,7 @@ const TopBar = ({
             SERVER
           </Typography>
           <Typography variant="h4" className={classes.info_value}>
-            http://localhost:{process.env.REACT_APP_PORT_NUMBER}
+            http://localhost:{process.env.REACT_APP_EMULATOR_PORT_NUMBER}
           </Typography>
         </Box>
         <Box className={classes.info}>

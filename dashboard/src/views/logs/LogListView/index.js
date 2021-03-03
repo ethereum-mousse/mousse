@@ -24,7 +24,7 @@ const LogListView = () => {
   useEffect(() => {
     const fetchData = async () => {
       const result = await axios(
-        'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/utils/request_logs'
+        'http://localhost:' + process.env.REACT_APP_EMULATOR_PORT_NUMBER + '/utils/request_logs'
       );
 
       let logs = result.data;
