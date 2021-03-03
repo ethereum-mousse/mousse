@@ -22,6 +22,7 @@ import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
 import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 import omitString from 'src/utils/omitString';
 import PendingShardHeadersTable from './PendingShardHeadersTable';
+import GrandparentEpochConfirmedCommitmentsTable from './GrandparentEpochConfirmedCommitmentsTable';
 
 const useStyles = makeStyles((theme) => ({
   root: {},
@@ -129,30 +130,45 @@ const Results = ({ className, ...rest }) => {
                             variant="h5"
                             gutterBottom
                             component="div"
-                            onClick={() => handleOpen(index + "current_epoch")}
+                            onClick={() => handleOpen(index + "current")}
                           >
                             <IconButton aria-label="expand row" size="small">
-                              {openedIds.has(index + "current_epoch") ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
+                              {openedIds.has(index + "current") ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
                             </IconButton>
                             Current Epoch Pending Shard Headers
                           </Typography>
 
-                          <Collapse in={openedIds.has(index + "current_epoch")} timeout={300} unmountOnExit>
+                          <Collapse in={openedIds.has(index + "current")} timeout={300} unmountOnExit>
                             <PendingShardHeadersTable pending_shard_headers={state.current_epoch_pending_shard_headers}></PendingShardHeadersTable>
                           </Collapse>
                           <Typography
                             variant="h5"
                             gutterBottom
                             component="div"
-                            onClick={() => handleOpen(index + "previous_epoch")}
+                            onClick={() => handleOpen(index + "previous")}
                           >
                             <IconButton aria-label="expand row" size="small">
-                              {openedIds.has(index + "previous_epoch") ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
+                              {openedIds.has(index + "previous") ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
                             </IconButton>
                             Previous Epoch Pending Shard Headers
                           </Typography>
-                          <Collapse in={openedIds.has(index + "previous_epoch")} timeout={300} unmountOnExit>
+                          <Collapse in={openedIds.has(index + "previous")} timeout={300} unmountOnExit>
                             <PendingShardHeadersTable pending_shard_headers={state.previous_epoch_pending_shard_headers}></PendingShardHeadersTable>
+                          </Collapse>
+
+                          <Typography
+                            variant="h5"
+                            gutterBottom
+                            component="div"
+                            onClick={() => handleOpen(index + "grandparent")}
+                          >
+                            <IconButton aria-label="expand row" size="small">
+                              {openedIds.has(index + "grandparent") ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
+                            </IconButton>
+                            Grandparent Epoch Confirmed Commitments
+                          </Typography>
+                          <Collapse in={openedIds.has(index + "grandparent")} timeout={300} unmountOnExit>
+                            <GrandparentEpochConfirmedCommitmentsTable grandparent_epoch_confirmed_commitments={state.grandparent_epoch_confirmed_commitments}></GrandparentEpochConfirmedCommitmentsTable>
                           </Collapse>
                         </Box>
                       </Collapse>
