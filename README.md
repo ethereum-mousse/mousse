@@ -31,7 +31,7 @@ $ RUST_LOG=trace ./target/release/http_api
 ```
 
 ## Dashboard
-![](dashboard.png)
+![dashboard](https://user-images.githubusercontent.com/20497787/109783408-511b4600-7c4d-11eb-8f58-634003d7a9c7.png)
 
 ### Run Dashboard
 If you want to use the GUI to visualize and control the emulator, run the dashboard by entering the following commands.
