@@ -1089,7 +1089,7 @@ pub fn utils_data_commitment(
         // .and(warp::body::content_length_limit(1024 * 1024))
         .and(warp::body::json())
         .and(with_request_logs(request_logs))
-        .and_then(get_utils_data_commitment)
+        .and_then(calc_data_commitment)
 }
 
 #[derive(Deserialize)]
@@ -1097,7 +1097,7 @@ pub struct UtilsDataCommitmentBody {
     data: String,
 }
 
-pub async fn get_utils_data_commitment(
+pub async fn calc_data_commitment(
     body: UtilsDataCommitmentBody,
     request_logs: SharedRequestLogs,
 ) -> Result<impl warp::Reply, Infallible> {
