@@ -82,7 +82,7 @@ const SlotProcessor = ({ className, ...rest }) => {
       "random": "process_random"
     }
 
-    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/simulator/slot/";
+    let endpoint = "http://localhost:" + process.env.REACT_APP_EMULATOR_PORT_NUMBER + "/simulator/slot/";
     endpoint += situation_to_endpoint[situation] + "/";
     endpoint += slot;
 
@@ -107,7 +107,7 @@ const SlotProcessor = ({ className, ...rest }) => {
   const handleClickInitSimulator = event => {
     event.preventDefault();
 
-    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/simulator/init";
+    let endpoint = "http://localhost:" + process.env.REACT_APP_EMULATOR_PORT_NUMBER + "/simulator/init";
 
     fetch(endpoint, {
       method: "POST",

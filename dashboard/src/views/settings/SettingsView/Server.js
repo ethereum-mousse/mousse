@@ -41,7 +41,7 @@ const Server = ({ className, ...rest }) => {
   useEffect(() => {
     const fetchData = async () => {
       const result = await axios(
-        'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/config'
+        'http://localhost:' + process.env.REACT_APP_EMULATOR_PORT_NUMBER + '/config'
       );
 
       if (result.data) {
@@ -66,7 +66,7 @@ const Server = ({ className, ...rest }) => {
 
   const handleSubmit = event => {
     event.preventDefault();
-    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/config";
+    let endpoint = "http://localhost:" + process.env.REACT_APP_EMULATOR_PORT_NUMBER + "/config";
 
     let body = JSON.stringify(state);
 
