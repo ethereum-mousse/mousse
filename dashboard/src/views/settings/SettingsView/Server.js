@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import clsx from 'clsx';
 import {
@@ -10,15 +10,16 @@ import {
   Divider,
   FormControlLabel,
   Grid,
-  Typography,
   makeStyles,
   FormControl,
-  // FormLabel,
+  FormLabel,
   TextField,
   FormGroup,
   Switch,
   // FormHelperText
 } from '@material-ui/core';
+import { result } from 'lodash';
+import axios from 'axios';
 
 const useStyles = makeStyles(({
   root: {},
@@ -31,16 +32,63 @@ const useStyles = makeStyles(({
 const Server = ({ className, ...rest }) => {
   const classes = useStyles();
 
-  const [state, setState] = React.useState({
-    auto_mining: false,
+  const [state, setState] = useState({
+    auto: false,
+    slot_time: null,
+    failure_rate: null,
   });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const result = await axios(
+        'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/config'
+      );
+
+      if (result.data) {
+        setState(result.data);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleChange = (event) => {
     setState({ ...state, [event.target.name]: event.target.checked });
+    console.log(state);
+  };
+
+  const handleChangeSlotTime = (event) => {
+    setState({ ...state, "slot_time": parseInt(event.target.value) });
+    console.log(state);
+  };
+
+  const handleChangeFailureRate = (event) => {
+    setState({ ...state, "failure_rate": parseFloat(event.target.value) });
+    console.log(state);
   };
 
   const handleSubmit = event => {
     event.preventDefault();
+    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/config";
+
+    let body = JSON.stringify(state);
+
+    fetch(endpoint, {
+      method: "POST",
+      body: body,
+      headers: {
+        "Content-Type": "application/json"
+      }
+    })
+      .then(response => {
+        if (response.status === 200) {
+          console.log("Success");
+        }
+        else {
+          console.log("Error:", JSON.stringify(response));
+        }
+      })
+      .catch(error => console.error("Error:", error));
   };
 
   return (
@@ -69,22 +117,40 @@ const Server = ({ className, ...rest }) => {
               xs={6}
             >
 
-              <Typography
-                color="textPrimary"
-                gutterBottom
-                variant="h6"
-              >
-                Mining
-              </Typography>
               <FormControl component="fieldset">
-                {/* <FormLabel component="legend">Mining</FormLabel> */}
+                <FormLabel component="legend">Mining</FormLabel>
                 <FormGroup>
                   <FormControlLabel
-                    control={<Switch checked={state.auto_mining} onChange={handleChange} name="gilad" />}
+                    control={<Switch checked={state.auto} onChange={handleChange} name="auto" />}
                     label="Auto Mining"
-                    disabled
                   />
                 </FormGroup>
+                <TextField
+                  label="Slot Time"
+                  type="number"
+                  inputProps={{ min: 0 }}
+                  margin="normal"
+                  padding="normal"
+                  name="SlotTime"
+                  onChange={handleChangeSlotTime}
+                  variant="outlined"
+                  disabled={!state.auto}
+                  value={state.slot_time}
+                  defaultValue={12}
+                />
+                <TextField
+                  label="Failure Rate"
+                  type="number"
+                  inputProps={{ min: 0, max: 1, step: 0.1 }}
+                  margin="normal"
+                  padding="normal"
+                  name="FailureRate"
+                  onChange={handleChangeFailureRate}
+                  variant="outlined"
+                  disabled={!state.auto}
+                  value={state.failure_rate}
+                  defaultValue={0}
+                />
               </FormControl>
             </Grid>
           </Grid>
@@ -99,7 +165,6 @@ const Server = ({ className, ...rest }) => {
             color="primary"
             variant="contained"
             type="submit"
-            disabled
           >
             Save
           </Button>
