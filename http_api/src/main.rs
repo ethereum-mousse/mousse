@@ -225,10 +225,11 @@ pub fn filters(
             config.clone(),
         ))
         .or(simulator_slot_process_random(
-            simulator,
+            simulator.clone(),
             request_logs.clone(),
-            config,
+            config.clone(),
         ))
+        .or(utils_current_status_for_polling(simulator, config))
         .or(utils_data_commitment(request_logs.clone()))
         .or(utils_request_logs(request_logs))
 }
@@ -1041,6 +1042,42 @@ pub async fn process_slots_random(
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(slot_processing_error(e)),
     }
+}
+
+/// The no logging endpoint for polling,
+/// GET /utils/current_status_for_polling
+pub fn utils_current_status_for_polling(
+    simulator: SharedSimulator,
+    config: SharedConfig,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::get()
+        .and(warp::path!("utils" / "current_status_for_polling"))
+        .and(with_simulator(simulator))
+        .and(with_config(config))
+        .and_then(get_current_status_for_polling)
+}
+
+#[derive(Serialize)]
+struct CurrentStatusForPolling {
+    slot: Option<Slot>,
+    config: Config,
+}
+
+pub async fn get_current_status_for_polling(
+    simulator: SharedSimulator,
+    config: SharedConfig,
+) -> Result<impl warp::Reply, Infallible> {
+    let simulator = simulator.lock().await;
+    let config = config.lock().await;
+    let slot = if simulator.beacon_chain.slot == 0 {
+        None
+    } else {
+        Some(simulator.beacon_chain.slot - 1)
+    };
+    Ok(warp::reply::json(&CurrentStatusForPolling {
+        slot,
+        config: config.config.clone(),
+    }))
 }
 
 /// POST /utils/data_commitment
