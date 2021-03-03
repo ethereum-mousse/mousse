@@ -536,7 +536,7 @@ pub fn shards_bid(
 }
 
 pub async fn publish_bid(
-    _shard: Shard,
+    shard: Shard,
     bid: Bid,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
@@ -544,10 +544,10 @@ pub async fn publish_bid(
     let mut request_logs = request_logs.lock().await;
     log(&mut request_logs, String::from("POST /shards/{shard}/bid"));
 
-    if _shard != bid.shard {
+    if shard != bid.shard {
         return Err(bid_publication_error(
             simulator::BidPublicationError::InvalidShard {
-                expect: _shard,
+                expect: shard,
                 found: bid.shard,
             },
         ));
@@ -565,7 +565,7 @@ pub struct BidWithData {
 }
 
 /// POST /shards/{shard}/bid_with_data
-/// $ curl -X POST -d '{"bid":{"shard":0,"slot":0,"commitment":{"point":1337,"length":0},"fee":0},"data":}' -H 'Content-Type: application/json' http://localhost:3030/shard/0/bid_with_data
+/// $ curl -X POST -d '{"bid":{"shard":0,"slot":0,"commitment":{"point":1337,"length":0},"fee":0},"data":"bW91c3Nl"}' -H 'Content-Type: application/json' http://localhost:3030/shard/0/bid_with_data
 pub fn shards_bid_with_data(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
