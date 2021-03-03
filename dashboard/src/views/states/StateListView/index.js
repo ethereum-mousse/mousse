@@ -41,7 +41,7 @@ const StateListView = () => {
     })
       .then(response => response.json())
       .then(new_states => {
-        if (states != new_states) {
+        if (states !== new_states) {
           new_states.reverse();
           setStates(new_states);
         }

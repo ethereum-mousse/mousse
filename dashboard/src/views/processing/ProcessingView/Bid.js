@@ -98,7 +98,7 @@ const Bid = ({ className, ...rest }) => {
 
   const [encoded_file, setEncodedFile] = useState();
   const handleChangeFile = async (event) => {
-    if (event.target.files.length == 0) {
+    if (event.target.files.length === 0) {
       return;
     }
     setFilename(event.target.files[0].name);

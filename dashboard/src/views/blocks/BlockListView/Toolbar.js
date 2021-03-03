@@ -35,9 +35,10 @@ const Toolbar = ({ className, ...rest }) => {
     >
       <Box
         display="flex"
-        justifyContent="flex-end"
+      // justifyContent="flex-end"
       >
         <Button
+          variant="contained"
           className={classes.exportButton}
           onClick={handleUpdateClick}
         >

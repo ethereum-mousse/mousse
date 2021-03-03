@@ -18,7 +18,7 @@ import {
   Switch,
   // FormHelperText
 } from '@material-ui/core';
-import { result } from 'lodash';
+// import { result } from 'lodash';
 import axios from 'axios';
 
 const useStyles = makeStyles(({
