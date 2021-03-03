@@ -428,22 +428,42 @@ pub fn beacon_finalized_blocks(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path!("beacon" / "finalized_blocks"))
+        .and(warp::query::<CountAndPageParams>())
         .and(with_simulator(simulator))
         .and(with_request_logs(request_logs))
         .and_then(get_beacon_finalized_blocks)
 }
 
 pub async fn get_beacon_finalized_blocks(
+    params: CountAndPageParams,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
 ) -> Result<impl warp::Reply, Infallible> {
     let mut request_logs = request_logs.lock().await;
     log(
         &mut request_logs,
-        String::from("GET /beacon/finalized_blocks"),
+        format!(
+            "GET /beacon/finalized_blocks?{}",
+            serde_qs::to_string(&params).unwrap()
+        ),
     );
     let simulator = simulator.lock().await;
+    let count = params.count.unwrap_or(100);
     let beacon_blocks = simulator.beacon_chain.get_finalized_blocks();
+    let beacon_blocks = if beacon_blocks.len() < count as usize {
+        beacon_blocks.clone()
+    } else {
+        let page = params.page.unwrap_or(0);
+        let last_slot = beacon_blocks.last().unwrap().slot;
+        beacon_blocks
+            .iter()
+            .filter(|block| {
+                last_slot < block.slot + count * (page + 1) as Slot
+                    && block.slot + count * page as Slot <= last_slot
+            })
+            .cloned()
+            .collect::<Vec<_>>()
+    };
     Ok(warp::reply::json(&beacon_blocks))
 }
 

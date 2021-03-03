@@ -7,8 +7,7 @@ import {
 } from '@material-ui/core';
 import Page from 'src/components/Page';
 import Results from './Results';
-// import Toolbar from './Toolbar';
-import axios from 'axios';
+import Toolbar from './Toolbar';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -21,31 +20,56 @@ const useStyles = makeStyles((theme) => ({
 
 const BlockListView = () => {
   const classes = useStyles();
+
   const [blocks, setBlocks] = useState([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const result = await axios(
-        'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/beacon/finalized_blocks'
-      );
+  const [count, setCount] = useState(10);
+  const [page, setPage] = useState(0);
 
-      let blocks = result.data;
-      setBlocks(blocks);
+  const updateBlocks = (count, page) => {
+    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/beacon/finalized_blocks";
+    let url = new URL(endpoint);
+    let params = {
+      count: count,
+      page: page,
     };
 
-    fetchData();
+    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+    fetch(url, {
+      method: "GET",
+    })
+      .then(response => response.json())
+      .then(new_blocks => {
+        if (blocks !== new_blocks) {
+          new_blocks.reverse();
+          setBlocks(new_blocks);
+        }
+      })
+      .catch(error => console.error("Error:", error));
+  }
+
+  useEffect(() => {
+    updateBlocks(count, page);
   }, []);
 
   return (
     <Page
       className={classes.root}
-      title="Blocks"
+      title="Finalized Blocks"
     >
       <Grid>
         <Container maxWidth={false}>
-          {/* <Toolbar /> */}
+          <Toolbar
+            count={count}
+            page={page}
+            updateBlocks={updateBlocks}
+          />
           <Box mt={3}>
-            <Results blocks={blocks} />
+            <Results
+              count={count} setCount={setCount}
+              page={page} setPage={setPage}
+              blocks={blocks}
+              updateBlocks={updateBlocks} />
           </Box>
         </Container>
       </Grid>

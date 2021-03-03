@@ -41,7 +41,7 @@ const BlockListView = () => {
     })
       .then(response => response.json())
       .then(new_blocks => {
-        if (blocks != new_blocks) {
+        if (blocks !== new_blocks) {
           new_blocks.reverse();
           setBlocks(new_blocks);
         }

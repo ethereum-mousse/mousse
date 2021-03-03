@@ -1,5 +1,4 @@
 import React from 'react';
-import clsx from 'clsx';
 import PropTypes from 'prop-types';
 import {
     Table,
@@ -9,11 +8,7 @@ import {
     TableRow,
     Typography,
     makeStyles,
-    colors,
 } from '@material-ui/core';
-import IconButton from '@material-ui/core/IconButton';
-import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
-import KeyboardArrowRightIcon from '@material-ui/icons/KeyboardArrowRight';
 import bytesToHex from 'src/utils/bytesToHex';
 import omitString from 'src/utils/omitString';
 
