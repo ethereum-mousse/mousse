@@ -599,7 +599,8 @@ pub async fn publish_bid_with_data(
         ));
     }
     let mut simulator = simulator.lock().await;
-    match simulator.publish_bid_with_data(bid_with_data.bid, &bid_with_data.data.into_bytes()) {
+    let data = base64::decode(&bid_with_data.data).unwrap_or_default();
+    match simulator.publish_bid_with_data(bid_with_data.bid, &data) {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err(bid_publication_error(e)),
     }
