@@ -115,11 +115,11 @@ const Server = ({ className, ...rest }) => {
             >
 
               <FormControl component="fieldset">
-                <FormLabel component="legend">Mining</FormLabel>
+                <FormLabel component="legend">Simulator Mode</FormLabel>
                 <FormGroup>
                   <FormControlLabel
                     control={<Switch checked={state.auto} onChange={handleChange} name="auto" />}
-                    label="Auto Mining"
+                    label="Auto Mode"
                   />
                 </FormGroup>
                 <TextField
