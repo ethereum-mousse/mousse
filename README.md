@@ -2,7 +2,6 @@
 
 Mousse is an Ethereum 2.0 emulator for local testing of Eth2 applications (mainly Rollups).
 
-![](dashboard.png)
 
 ## Getting Started
 
@@ -13,13 +12,26 @@ $ cargo build --release
 $ ./target/release/http_api
 ```
 
+#### Flags
+```
+-a, --auto       Running simulator in auto mode. Default: false.
+-h, --help       Prints help information
+-V, --version    Prints version information
+```
 #### Options
-- `--port`: Port number to listen on. Default: 3030.
+```
+-f, --failure-rate <FAILURE_RATE>    Failure rate for the auto mode. Default: 0.
+-p, --port <PORT>                    Port number to listen on. Default: 3030.
+-s, --slot-time <SLOT_TIME>          Slot time in seconds for the auto mode. Default: 12.
+```
 
 #### Logging
 ```
 $ RUST_LOG=trace ./target/release/http_api 
 ```
+
+## Dashboard
+![](dashboard.png)
 
 ### Run Dashboard
 If you want to use the GUI to visualize and control the emulator, run the dashboard by entering the following commands.
