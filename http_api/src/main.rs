@@ -565,7 +565,7 @@ pub struct BidWithData {
 }
 
 /// POST /shards/{shard}/bid_with_data
-/// $ curl -X POST -d '{"bid":{"shard":0,"slot":1,"commitment":{"point":[138,242,160,225,209,236,53,174,172,15,28,234,190,70,242,28,171,189,72,181,73,85,194,175,243,3,178,236,97,160,135,229,227,245,224,250,13,243,208,141,120,70,177,2,18,36,183,67],"length":1},"fee":0},"data":"bW91c3Nl"}' -H 'Content-Type: application/json' http://localhost:3030/shard/0/bid_with_data
+/// $ curl -X POST -d '{"bid":{"shard":0,"slot":1,"commitment":{"point":[138,242,160,225,209,236,53,174,172,15,28,234,190,70,242,28,171,189,72,181,73,85,194,175,243,3,178,236,97,160,135,229,227,245,224,250,13,243,208,141,120,70,177,2,18,36,183,67],"length":1},"fee":0},"data":"bW91c3Nl"}' -H 'Content-Type: application/json' http://localhost:3030/shards/0/bid_with_data
 pub fn shards_bid_with_data(
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
