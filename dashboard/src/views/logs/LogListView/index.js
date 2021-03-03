@@ -40,7 +40,7 @@ const LogListView = () => {
       className={classes.root}
       title="Logs"
     >
-      <Container maxWidth={false}>
+      <Container maxWidth="lg">
         <Box mt={3}>
           <Results logs={logs} />
         </Box>

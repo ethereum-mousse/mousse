@@ -23,7 +23,7 @@ const SettingsView = () => {
       className={classes.root}
       title="Settings"
     >
-      <Container maxWidth="lg">
+      <Container maxWidth="sm">
         <Server />
       </Container>
     </Page>
