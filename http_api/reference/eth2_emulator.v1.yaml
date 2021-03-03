@@ -25,11 +25,6 @@ paths:
       responses:
         '200':
           description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties: {}
         '404':
           description: Not Found
       operationId: publishBid
@@ -42,6 +37,28 @@ paths:
         description: ''
       description: |
         Publish a bid. 
+        Assume the receiving node broadcast to the corresponding shard.
+      tags:
+        - Shards
+  '/shard/{shard}/bid_with_data':
+    parameters: []
+    post:
+      summary: Publish Bid With Data
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not Found
+      operationId: publishBid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BidWithData'
+            examples: {}
+        description: ''
+      description: |
+        Publish a bid with data. 
         Assume the receiving node broadcast to the corresponding shard.
       tags:
         - Shards
@@ -95,51 +112,10 @@ paths:
         Config for auto mode.
       tags:
         - Config
-  '/shards/{shard}/headers/{slot}':
-    parameters:
-      - schema:
-          type: string
-        name: shard
-        in: path
-        required: true
-      - schema:
-          type: string
-        name: slot
-        in: path
-        required: true
-    get:
-      summary: Get Shard Header
-      tags:
-        - Shards
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: '#/components/schemas/ShardHeader'
-        '404':
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  code:
-                    type: string
-              examples:
-                example-1:
-                  value:
-                    code: '404'
-      operationId: getShardHeaderBySlot
-      description: ''
   /beacon/blocks:
     parameters: []
     get:
-      summary: Get Beacon Block
+      summary: Get Beacon Blocks
       tags:
         - Beacon
       responses:
@@ -154,10 +130,23 @@ paths:
         '404':
           description: Not Found
       operationId: getBeaconBlockById
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                count:
+                  type: integer
+                  default: 100
+                page:
+                  type: integer
+                  default: 0
+      description: Get beacon blocks of beacon chain in the latest order.
   /beacon/finalized_blocks:
     parameters: []
     get:
-      summary: Get Finalized Block
+      summary: Get Finalized Blocks
       tags:
         - Beacon
       responses:
@@ -172,7 +161,19 @@ paths:
         '404':
           description: Not Found
       operationId: get-beacon-finalized_blocks-block_id
-      description: ''
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                count:
+                  type: integer
+                  default: 100
+                page:
+                  type: integer
+                  default: 0
+      description: Get finalized beacon blocks of beacon chain in the latest order.
   /beacon/finalized_checkpoint:
     get:
       summary: Get Finalized Checkpoint
@@ -188,6 +189,7 @@ paths:
         '404':
           description: Not Found
       operationId: get-beacon-finalized_checkpoint
+      description: Get the finalized checkpoint
   '/simulator/slot/process/{slot_num}':
     parameters:
       - schema:
@@ -346,7 +348,7 @@ paths:
               properties:
                 data:
                   type: string
-      description: ''
+      description: Calculate the data commitment from a base64-encoded data.
       tags:
         - Utils
   /utils/request_logs:
@@ -366,6 +368,7 @@ paths:
         '404':
           description: Not Found
       operationId: get-utils-request_logs
+      description: Get the log of the API requests.
   /beacon/states:
     get:
       summary: Get Beacon States
@@ -383,6 +386,61 @@ paths:
         '404':
           description: Not Found
       operationId: get-beacon-states
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                count:
+                  type: integer
+                  default: 100
+                page:
+                  type: integer
+                  default: 0
+      description: Get beacon states of beacon chain in the latest order.
+  /beacon/blocks/head:
+    get:
+      summary: Get Head of Beacon Chain
+      tags:
+        - Beacon
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not Found
+      operationId: get-beacon-blocks-head
+      description: Get the head of beacon chain.
+  /simulator/init:
+    post:
+      summary: Init Simulator
+      operationId: post-simulator-init
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not Found
+      tags:
+        - Simulator
+      description: Initialize the simulator.
+  /utils/current_status_for_polling:
+    get:
+      summary: Get Current Status For Polling
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  slot:
+                    type: integer
+                  config:
+                    $ref: '#/components/schemas/Config'
+      operationId: get-utils-current_status_for_polling
+      description: The no logging endpoint for polling used by the dashboard.
 components:
   schemas:
     Bid:
@@ -531,6 +589,16 @@ components:
           type: integer
         failure_rate:
           type: number
+    BidWithData:
+      title: BidWithData
+      type: object
+      properties:
+        bid:
+          $ref: '#/components/schemas/Bid'
+        data:
+          type: string
+          description: Base64 String
+  parameters: {}
 tags:
   - name: Beacon
     description: Query to a virtual beacon node.
