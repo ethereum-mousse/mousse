@@ -167,7 +167,7 @@ pub fn filters(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     root()
         .or(beacon_blocks(simulator.clone(), request_logs.clone()))
-        .or(beacon_blocks_head(simulator.clone()))
+        .or(beacon_blocks_head(simulator.clone(), request_logs.clone()))
         .or(beacon_finalized_blocks(
             simulator.clone(),
             request_logs.clone(),
@@ -225,10 +225,11 @@ pub fn filters(
             config.clone(),
         ))
         .or(simulator_slot_process_random(
-            simulator,
+            simulator.clone(),
             request_logs.clone(),
-            config,
+            config.clone(),
         ))
+        .or(utils_current_status_for_polling(simulator, config))
         .or(utils_data_commitment(request_logs.clone()))
         .or(utils_request_logs(request_logs))
 }
@@ -401,21 +402,21 @@ pub async fn get_beacon_blocks(
 /// GET /beacon/blocks/head
 pub fn beacon_blocks_head(
     simulator: SharedSimulator,
-    // request_logs: SharedRequestLogs,
+    request_logs: SharedRequestLogs,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path!("beacon" / "blocks" / "head"))
         .and(with_simulator(simulator))
-        // .and(with_request_logs(request_logs))
+        .and(with_request_logs(request_logs))
         .and_then(get_beacon_blocks_head)
 }
 
 pub async fn get_beacon_blocks_head(
     simulator: SharedSimulator,
-    // request_logs: SharedRequestLogs,
+    request_logs: SharedRequestLogs,
 ) -> Result<impl warp::Reply, Infallible> {
-    // let mut request_logs = request_logs.lock().await;
-    // log(&mut request_logs, String::from("GET /beacon/blocks/head"));
+    let mut request_logs = request_logs.lock().await;
+    log(&mut request_logs, String::from("GET /beacon/blocks/head"));
     let simulator = simulator.lock().await;
     let head = simulator.beacon_chain.blocks.last();
     Ok(warp::reply::json(&head))
@@ -1043,6 +1044,42 @@ pub async fn process_slots_random(
     }
 }
 
+/// The no logging endpoint for polling,
+/// GET /utils/current_status_for_polling
+pub fn utils_current_status_for_polling(
+    simulator: SharedSimulator,
+    config: SharedConfig,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::get()
+        .and(warp::path!("utils" / "current_status_for_polling"))
+        .and(with_simulator(simulator))
+        .and(with_config(config))
+        .and_then(get_current_status_for_polling)
+}
+
+#[derive(Serialize)]
+struct CurrentStatusForPolling {
+    slot: Option<Slot>,
+    config: Config,
+}
+
+pub async fn get_current_status_for_polling(
+    simulator: SharedSimulator,
+    config: SharedConfig,
+) -> Result<impl warp::Reply, Infallible> {
+    let simulator = simulator.lock().await;
+    let config = config.lock().await;
+    let slot = if simulator.beacon_chain.slot == 0 {
+        None
+    } else {
+        Some(simulator.beacon_chain.slot - 1)
+    };
+    Ok(warp::reply::json(&CurrentStatusForPolling {
+        slot,
+        config: config.config.clone(),
+    }))
+}
+
 /// POST /utils/data_commitment
 pub fn utils_data_commitment(
     request_logs: SharedRequestLogs,
@@ -1052,7 +1089,7 @@ pub fn utils_data_commitment(
         // .and(warp::body::content_length_limit(1024 * 1024))
         .and(warp::body::json())
         .and(with_request_logs(request_logs))
-        .and_then(get_utils_data_commitment)
+        .and_then(calc_data_commitment)
 }
 
 #[derive(Deserialize)]
@@ -1060,7 +1097,7 @@ pub struct UtilsDataCommitmentBody {
     data: String,
 }
 
-pub async fn get_utils_data_commitment(
+pub async fn calc_data_commitment(
     body: UtilsDataCommitmentBody,
     request_logs: SharedRequestLogs,
 ) -> Result<impl warp::Reply, Infallible> {
