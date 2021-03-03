@@ -580,7 +580,7 @@ pub fn shards_bid_with_data(
 }
 
 pub async fn publish_bid_with_data(
-    _shard: Shard,
+    shard: Shard,
     bid_with_data: BidWithData,
     simulator: SharedSimulator,
     request_logs: SharedRequestLogs,
@@ -590,10 +590,10 @@ pub async fn publish_bid_with_data(
         &mut request_logs,
         String::from("POST /shards/{shard}/bid_with_data"),
     );
-    if _shard != bid_with_data.bid.shard {
+    if shard != bid_with_data.bid.shard {
         return Err(bid_publication_error(
             simulator::BidPublicationError::InvalidShard {
-                expect: _shard,
+                expect: shard,
                 found: bid_with_data.bid.shard,
             },
         ));
