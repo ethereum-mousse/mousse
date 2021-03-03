@@ -38,26 +38,22 @@ const TopBar = ({
 
   useEffect(() => {
     const fetchData = async () => {
-      {
-        const result = await axios(
-          'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/beacon/blocks/head'
-        );
+      const result = await axios(
+        'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/utils/current_status_for_polling'
+      );
+      let data = result.data;
 
-        if (result.data) {
+      if (data) {
+        if (data.slot) {
           rest.setCurrentSlot(result.data.slot);
         }
         else {
           rest.setCurrentSlot(0);
         }
+        setConfig(data.config);
       }
-      {
-        const result = await axios(
-          'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/config'
-        );
-
-        if (result.data) {
-          setConfig(result.data);
-        }
+      else {
+        rest.setCurrentSlot(0);
       }
     };
 
