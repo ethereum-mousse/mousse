@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import clsx from 'clsx';
 import PropTypes from 'prop-types';
@@ -34,18 +34,30 @@ const TopBar = ({
   ...rest
 }) => {
   const classes = useStyles();
+  const [config, setConfig] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      const result = await axios(
-        'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/beacon/blocks/head'
-      );
+      {
+        const result = await axios(
+          'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/beacon/blocks/head'
+        );
 
-      if (result.data) {
-        rest.setCurrentSlot(result.data.slot);
+        if (result.data) {
+          rest.setCurrentSlot(result.data.slot);
+        }
+        else {
+          rest.setCurrentSlot(0);
+        }
       }
-      else {
-        rest.setCurrentSlot(0);
+      {
+        const result = await axios(
+          'http://localhost:' + process.env.REACT_APP_PORT_NUMBER + '/config'
+        );
+
+        if (result.data) {
+          setConfig(result.data);
+        }
       }
     };
 
@@ -84,7 +96,7 @@ const TopBar = ({
             MINING STATUS
           </Typography>
           <Typography variant="h4" className={classes.info_value}>
-            MANUAL
+            {config && config.auto ? "AUTO" : "MANUAL"}
           </Typography>
         </Box>
       </Toolbar>
