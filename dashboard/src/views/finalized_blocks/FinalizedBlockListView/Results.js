@@ -43,11 +43,10 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-const Results = ({ className, blocks, ...rest }) => {
+const Results = ({ className, ...rest }) => {
   const classes = useStyles();
+
   const [openedBlockIds, setOpenedBlockIds] = useState(new Set());
-  const [limit, setLimit] = useState(10);
-  const [page, setPage] = useState(0);
 
   const handleOpenBlock = (id) => {
     let newOpenedBlockIds = new Set(openedBlockIds);
@@ -59,12 +58,15 @@ const Results = ({ className, blocks, ...rest }) => {
     setOpenedBlockIds(newOpenedBlockIds);
   }
 
-  const handleLimitChange = (event) => {
-    setLimit(event.target.value);
+  const handleCountChange = (event) => {
+    let count = event.target.value;
+    rest.setCount(count);
+    rest.updateBlocks(count, rest.page);
   };
 
   const handlePageChange = (event, newPage) => {
-    setPage(newPage);
+    rest.setPage(newPage);
+    rest.updateBlocks(rest.count, newPage);
   };
 
   const blockColorClassName = block => {
@@ -75,27 +77,6 @@ const Results = ({ className, blocks, ...rest }) => {
       return classes.table_row;
     }
   };
-
-  let slot_to_block = [];
-  if (blocks.length > 0) {
-    let block_id = 0;
-    for (let slot = 0; slot <= blocks[blocks.length - 1].slot; slot++) {
-      if (slot === blocks[block_id].slot) {
-        slot_to_block.push(blocks[block_id]);
-        block_id += 1;
-      }
-      else {
-        slot_to_block.push({
-          slot: slot,
-          parent_root: null,
-          state_root: null,
-          shard_headers: null,
-        });
-      }
-    }
-  }
-  let slot_to_block_rev = slot_to_block;
-  slot_to_block_rev.reverse();
 
   return (
     <Card
@@ -123,7 +104,7 @@ const Results = ({ className, blocks, ...rest }) => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {slot_to_block_rev.slice(page * limit, (page + 1) * limit).map((block, index) => (
+              {rest.blocks.slice(0, rest.count).map((block, index) => (
                 <React.Fragment
                   key={index}>
                   <TableRow
@@ -197,11 +178,11 @@ const Results = ({ className, blocks, ...rest }) => {
       </PerfectScrollbar>
       <TablePagination
         component="div"
-        count={blocks.length}
+        count={rest.blocks.length ? rest.blocks[0].slot : 0}
         onChangePage={handlePageChange}
-        onChangeRowsPerPage={handleLimitChange}
-        page={page}
-        rowsPerPage={limit}
+        onChangeRowsPerPage={handleCountChange}
+        page={rest.page}
+        rowsPerPage={rest.count}
         rowsPerPageOptions={[5, 10, 25, 50, 100]}
       />
     </Card >
