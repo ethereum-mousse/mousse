@@ -89,7 +89,7 @@ const TopBar = ({
         </Box>
         <Box className={classes.info}>
           <Typography variant="h6">
-            MINING STATUS
+            SIMULATOR MODE
           </Typography>
           <Typography variant="h4" className={classes.info_value}>
             {config && config.auto ? "AUTO" : "MANUAL"}
