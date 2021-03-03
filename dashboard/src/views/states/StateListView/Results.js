@@ -46,16 +46,16 @@ const useStyles = makeStyles((theme) => ({
 const Results = ({ className, ...rest }) => {
   const classes = useStyles();
 
-  const [openedStateIds, setOpenedStateIds] = useState(new Set());
+  const [openedIds, setOpenedIds] = useState(new Set());
 
-  const handleOpenState = (id) => {
-    let newOpenedStateIds = new Set(openedStateIds);
-    if (newOpenedStateIds.has(id)) {
-      newOpenedStateIds.delete(id);
+  const handleOpen = (id) => {
+    let newOpenedIds = new Set(openedIds);
+    if (newOpenedIds.has(id)) {
+      newOpenedIds.delete(id);
     } else {
-      newOpenedStateIds.add(id);
+      newOpenedIds.add(id);
     }
-    setOpenedStateIds(newOpenedStateIds);
+    setOpenedIds(newOpenedIds);
   }
 
   const handleCountChange = (event) => {
@@ -102,12 +102,12 @@ const Results = ({ className, ...rest }) => {
                   key={index}>
                   <TableRow
                     hover
-                    onClick={() => handleOpenState(index)}
+                    onClick={() => handleOpen(index)}
                     className={stateColorClassName(state)}
                   >
                     <TableCell padding="checkbox" align="right">
                       <IconButton aria-label="expand row" size="small">
-                        {openedStateIds.has(index) ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
+                        {openedIds.has(index) ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
                       </IconButton>
                     </TableCell>
                     <TableCell align="right">
@@ -123,16 +123,37 @@ const Results = ({ className, ...rest }) => {
                   </TableRow>
                   <TableRow>
                     <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={5}>
-                      <Collapse in={openedStateIds.has(index)} timeout={300} unmountOnExit>
+                      <Collapse in={openedIds.has(index)} timeout={300} unmountOnExit>
                         <Box margin={2}>
-                          <Typography variant="h5" gutterBottom component="div">
+                          <Typography
+                            variant="h5"
+                            gutterBottom
+                            component="div"
+                            onClick={() => handleOpen(index + "current_epoch")}
+                          >
+                            <IconButton aria-label="expand row" size="small">
+                              {openedIds.has(index + "current_epoch") ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
+                            </IconButton>
                             Current Epoch Pending Shard Headers
                           </Typography>
-                          <PendingShardHeadersTable pending_shard_headers={state.current_epoch_pending_shard_headers}></PendingShardHeadersTable>
-                          <Typography variant="h5" gutterBottom component="div">
+
+                          <Collapse in={openedIds.has(index + "current_epoch")} timeout={300} unmountOnExit>
+                            <PendingShardHeadersTable pending_shard_headers={state.current_epoch_pending_shard_headers}></PendingShardHeadersTable>
+                          </Collapse>
+                          <Typography
+                            variant="h5"
+                            gutterBottom
+                            component="div"
+                            onClick={() => handleOpen(index + "previous_epoch")}
+                          >
+                            <IconButton aria-label="expand row" size="small">
+                              {openedIds.has(index + "previous_epoch") ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
+                            </IconButton>
                             Previous Epoch Pending Shard Headers
                           </Typography>
-                          <PendingShardHeadersTable pending_shard_headers={state.previous_epoch_pending_shard_headers}></PendingShardHeadersTable>
+                          <Collapse in={openedIds.has(index + "previous_epoch")} timeout={300} unmountOnExit>
+                            <PendingShardHeadersTable pending_shard_headers={state.previous_epoch_pending_shard_headers}></PendingShardHeadersTable>
+                          </Collapse>
                         </Box>
                       </Collapse>
                     </TableCell>
