@@ -61,11 +61,10 @@ const Results = ({ className, ...rest }) => {
   const handleCountChange = (event) => {
     let count = event.target.value;
     rest.setCount(count);
-    rest.updateBlocks(rest.count, rest.page);
+    rest.updateBlocks(count, rest.page);
   };
 
   const handlePageChange = (event, newPage) => {
-    console.log(newPage);
     rest.setPage(newPage);
     rest.updateBlocks(rest.count, newPage);
   };
