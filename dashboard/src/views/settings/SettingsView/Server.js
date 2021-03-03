@@ -112,9 +112,9 @@ const Server = ({ className, ...rest }) => {
             <Grid
               className={classes.item}
               item
-              md={6}
-              sm={6}
-              xs={6}
+              md={8}
+              sm={8}
+              xs={8}
             >
 
               <FormControl component="fieldset">
