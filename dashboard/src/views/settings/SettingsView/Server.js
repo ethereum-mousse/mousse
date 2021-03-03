@@ -54,17 +54,14 @@ const Server = ({ className, ...rest }) => {
 
   const handleChange = (event) => {
     setState({ ...state, [event.target.name]: event.target.checked });
-    console.log(state);
   };
 
   const handleChangeSlotTime = (event) => {
     setState({ ...state, "slot_time": parseInt(event.target.value) });
-    console.log(state);
   };
 
   const handleChangeFailureRate = (event) => {
     setState({ ...state, "failure_rate": parseFloat(event.target.value) });
-    console.log(state);
   };
 
   const handleSubmit = event => {
