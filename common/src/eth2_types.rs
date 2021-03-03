@@ -395,7 +395,7 @@ mod tests {
         let header = ShardHeader {
             slot: 0,
             shard: 0,
-            commitment: generate_dummy_from_str(&String::from("Ethreum")),
+            commitment: generate_dummy_from_str(&String::from("Ethereum")),
         };
         let signed_header1 = SignedShardHeader::dummy_from_header(header.clone());
         let signed_header2 = SignedShardHeader::dummy_from_header(header);
