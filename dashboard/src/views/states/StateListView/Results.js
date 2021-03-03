@@ -46,37 +46,7 @@ const useStyles = makeStyles((theme) => ({
 const Results = ({ className, ...rest }) => {
   const classes = useStyles();
 
-  const [states, setStates] = useState([]);
-
   const [openedStateIds, setOpenedStateIds] = useState(new Set());
-  const [count, setCount] = useState(10);
-  const [page, setPage] = useState(0);
-  const [updating, setUpdating] = useState(true);
-
-  useEffect(() => {
-    updateStates(count, page);
-  }, []);
-
-  const updateStates = (count, page) => {
-    setUpdating(true);
-    let endpoint = "http://localhost:" + process.env.REACT_APP_PORT_NUMBER + "/beacon/states";
-    let url = new URL(endpoint);
-    let params = {
-      count: count,
-      page: page,
-    };
-
-    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-    fetch(url, {
-      method: "GET",
-    })
-      .then(response => response.json())
-      .then(states => {
-        setStates(states);
-        setUpdating(false);
-      })
-      .catch(error => console.error("Error:", error));
-  }
 
   const handleOpenState = (id) => {
     let newOpenedStateIds = new Set(openedStateIds);
@@ -90,50 +60,19 @@ const Results = ({ className, ...rest }) => {
 
   const handleCountChange = (event) => {
     let count = event.target.value;
-    setCount(count);
-    updateStates(count, page);
+    rest.setCount(count);
+    rest.updateStates(count, rest.page);
   };
 
   const handlePageChange = (event, newPage) => {
-    setPage(newPage);
-    updateStates(count, newPage);
+    rest.setPage(newPage);
+    rest.updateStates(rest.count, newPage);
   }
 
   const stateColorClassName = state => {
-    // if (!updating && state.state_root == null || state.shard_headers.length === -1) {
-    //   return classes.table_row_red;
-    // }
-    // else {
+    // TODO: Remove
     return classes.table_row;
-    // }
   };
-
-  let slot_to_state = [];
-  if (states.length > 0) {
-    let state_id = 0;
-    let min_slot = Math.max(0, rest.current_slot - (page + 1) * count + 1);
-    let max_slot = rest.current_slot - page * count;
-    for (let slot = min_slot; slot <= max_slot; slot++) {
-      if (slot === states[state_id].slot) {
-        slot_to_state.push(states[state_id]);
-        state_id += 1;
-      }
-      else {
-        slot_to_state.push({
-          slot: slot,
-          finalized_checkpoint: {
-            epoch: null,
-            root: ""
-          },
-          previous_epoch_pending_shard_headers: [],
-          current_epoch_pending_shard_headers: [],
-          shard_gasprice: null,
-        });
-      }
-    }
-  }
-  let slot_to_state_rev = slot_to_state;
-  slot_to_state_rev.reverse();
 
   return (
     <Card
@@ -158,7 +97,7 @@ const Results = ({ className, ...rest }) => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {slot_to_state_rev.slice(0, count).map((state, index) => (
+              {rest.states.slice(0, rest.count).map((state, index) => (
                 <React.Fragment
                   key={index}>
                   <TableRow
@@ -209,8 +148,8 @@ const Results = ({ className, ...rest }) => {
         count={rest.current_slot}
         onChangePage={handlePageChange}
         onChangeRowsPerPage={handleCountChange}
-        page={page}
-        rowsPerPage={count}
+        page={rest.page}
+        rowsPerPage={rest.count}
         rowsPerPageOptions={[5, 10, 25, 50, 100]}
       />
     </Card >
