@@ -167,7 +167,7 @@ pub fn filters(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     root()
         .or(beacon_blocks(simulator.clone(), request_logs.clone()))
-        .or(beacon_blocks_head(simulator.clone()))
+        .or(beacon_blocks_head(simulator.clone(), request_logs.clone()))
         .or(beacon_finalized_blocks(
             simulator.clone(),
             request_logs.clone(),
@@ -401,21 +401,21 @@ pub async fn get_beacon_blocks(
 /// GET /beacon/blocks/head
 pub fn beacon_blocks_head(
     simulator: SharedSimulator,
-    // request_logs: SharedRequestLogs,
+    request_logs: SharedRequestLogs,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path!("beacon" / "blocks" / "head"))
         .and(with_simulator(simulator))
-        // .and(with_request_logs(request_logs))
+        .and(with_request_logs(request_logs))
         .and_then(get_beacon_blocks_head)
 }
 
 pub async fn get_beacon_blocks_head(
     simulator: SharedSimulator,
-    // request_logs: SharedRequestLogs,
+    request_logs: SharedRequestLogs,
 ) -> Result<impl warp::Reply, Infallible> {
-    // let mut request_logs = request_logs.lock().await;
-    // log(&mut request_logs, String::from("GET /beacon/blocks/head"));
+    let mut request_logs = request_logs.lock().await;
+    log(&mut request_logs, String::from("GET /beacon/blocks/head"));
     let simulator = simulator.lock().await;
     let head = simulator.beacon_chain.blocks.last();
     Ok(warp::reply::json(&head))
