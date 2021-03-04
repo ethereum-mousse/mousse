@@ -2,11 +2,14 @@
 
 Mousse is an Ethereum 2.0 emulator for local testing of Eth2 applications (mainly Rollups).
 
+## HTTP Server
 
-## Getting Started
+The REST API definition can be found in the [http_api/reference](http_api/reference) directory.
 
-### Run Eth2 Emulator
-You can run the Ethereum 2.0 emulator with the following commands:
+Inside the server, the Eth2 data sharding simulator ([eth2_simulator](simulator/)) is running.
+
+### Run Server
+You can run the Ethereum 2.0 emulator server with the following commands:
 ```
 $ cargo build --release
 $ ./target/release/http_api
@@ -52,7 +55,3 @@ If you want to change the port, run the following command to start:
 ```
 $ REACT_APP_EMULATOR_PORT_NUMBER=<PORT_NUMBER> npm start
 ```
-
-## Eth2 Emulator Server
-The implementation of the emulator server is in the `http_api` directory, and the Ethereum 2.0 simulator `simulator` is running inside. The emulator API definition is located in the [http_api/reference](http_api/reference) directory.
-
