@@ -164,19 +164,17 @@ paths:
         '404':
           description: Not Found
       operationId: get-beacon-finalized_blocks-block_id
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                count:
-                  type: integer
-                  default: 100
-                page:
-                  type: integer
-                  default: 0
       description: Get finalized beacon blocks of beacon chain in the latest order.
+      parameters:
+        - schema:
+            type: integer
+            default: 100
+          in: query
+          name: count
+        - schema:
+            type: integer
+          in: query
+          name: page
   /beacon/finalized_checkpoint:
     get:
       summary: Get Finalized Checkpoint
@@ -389,19 +387,17 @@ paths:
         '404':
           description: Not Found
       operationId: get-beacon-states
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                count:
-                  type: integer
-                  default: 100
-                page:
-                  type: integer
-                  default: 0
       description: Get beacon states of beacon chain in the latest order.
+      parameters:
+        - schema:
+            type: integer
+            default: 100
+          in: query
+          name: count
+        - schema:
+            type: integer
+          in: query
+          name: page
   /beacon/blocks/head:
     get:
       summary: Get Head of Beacon Chain
