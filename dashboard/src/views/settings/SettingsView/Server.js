@@ -123,7 +123,7 @@ const Server = ({ className, ...rest }) => {
                   />
                 </FormGroup>
                 <TextField
-                  label="Slot Time"
+                  label="Slot Time (Seconds)"
                   type="number"
                   inputProps={{ min: 0 }}
                   margin="normal"
