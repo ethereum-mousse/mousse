@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: eth2_emulator
-  version: '1.0'
+  version: '0.1.0'
   description: |-
     API specification for the Eth2 Emulator of Mousse
     Designed for rollups
