@@ -19,7 +19,13 @@ servers:
     description: ''
 paths:
   '/shards/{shard}/bid':
-    parameters: []
+    parameters:
+      - schema:
+          type: integer
+        name: shard
+        in: path
+        required: true
+        description: Shard number
     post:
       summary: Publish Bid
       responses:
@@ -41,7 +47,13 @@ paths:
       tags:
         - Shards
   '/shards/{shard}/bid_with_data':
-    parameters: []
+    parameters:
+      - schema:
+          type: integer
+        name: shard
+        in: path
+        required: true
+        description: Shard number
     post:
       summary: Publish Bid With Data
       responses:
