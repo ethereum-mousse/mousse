@@ -252,7 +252,7 @@ const Bid = ({ className, ...rest }) => {
                 <FormLabel component="legend">Commitment</FormLabel>
                 <TextField
                   fullWidth
-                  label="Point (hex)"
+                  label="Point (Hex)"
                   margin="normal"
                   name="point"
                   onChange={handleChangePoint}

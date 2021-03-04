@@ -63,15 +63,15 @@ const SlotProcessor = ({ className, ...rest }) => {
     }
   };
 
-  const [situation, setSituation] = useState('normal');
-  const handleChangeSituation = (event) => {
-    setSituation(event.target.value);
+  const [scenario, setScenario] = useState('normal');
+  const handleChangeScenario = (event) => {
+    setScenario(event.target.value);
   };
 
   const handleSubmit = event => {
     event.preventDefault();
 
-    const situation_to_endpoint = {
+    const scenario_to_endpoint = {
       "normal": "process",
       "without_shard_data_inclusion": "process_without_shard_data_inclusion",
       "without_shard_blob_proposal": "process_without_shard_blob_proposal",
@@ -83,7 +83,7 @@ const SlotProcessor = ({ className, ...rest }) => {
     }
 
     let endpoint = "http://localhost:" + process.env.REACT_APP_EMULATOR_PORT_NUMBER + "/simulator/slot/";
-    endpoint += situation_to_endpoint[situation] + "/";
+    endpoint += scenario_to_endpoint[scenario] + "/";
     endpoint += slot;
 
     fetch(endpoint, {
@@ -190,8 +190,8 @@ const SlotProcessor = ({ className, ...rest }) => {
                 component="fieldset"
                 margin="normal"
               >
-                <FormLabel component="legend">Situation</FormLabel>
-                <RadioGroup aria-label="situation" name="situation" value={situation} onChange={handleChangeSituation}>
+                <FormLabel component="legend">Scenario</FormLabel>
+                <RadioGroup aria-label="scenario" name="scenario" value={scenario} onChange={handleChangeScenario}>
                   <FormControlLabel value="normal" control={<Radio />} label="normal" />
                   <FormControlLabel value="without_shard_data_inclusion" control={<Radio />} label="without shard data inclusion" />
                   <FormControlLabel value="without_shard_blob_proposal" control={<Radio />} label="without shard blob proposal" />

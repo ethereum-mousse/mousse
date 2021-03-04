@@ -80,6 +80,7 @@ const Server = ({ className, ...rest }) => {
       .then(response => {
         if (response.status === 200) {
           console.log("Success");
+          rest.setSuccessOpen(true);
         }
         else {
           console.log("Error:", JSON.stringify(response));
@@ -123,7 +124,7 @@ const Server = ({ className, ...rest }) => {
                   />
                 </FormGroup>
                 <TextField
-                  label="Slot Time"
+                  label="Slot Time (Seconds)"
                   type="number"
                   inputProps={{ min: 0 }}
                   margin="normal"
