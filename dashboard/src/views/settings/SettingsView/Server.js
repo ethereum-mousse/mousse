@@ -80,6 +80,7 @@ const Server = ({ className, ...rest }) => {
       .then(response => {
         if (response.status === 200) {
           console.log("Success");
+          rest.setSuccessOpen(true);
         }
         else {
           console.log("Error:", JSON.stringify(response));

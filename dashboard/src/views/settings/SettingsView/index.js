@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   makeStyles
 } from '@material-ui/core';
 import Page from 'src/components/Page';
 import Server from './Server';
+import SuccessDialog from 'src/components/SuccessDialog';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -18,14 +19,17 @@ const useStyles = makeStyles((theme) => ({
 const SettingsView = () => {
   const classes = useStyles();
 
+  const [success_open, setSuccessOpen] = useState(false);
+
   return (
     <Page
       className={classes.root}
       title="Settings"
     >
       <Container maxWidth="sm">
-        <Server />
+        <Server setSuccessOpen={setSuccessOpen} />
       </Container>
+      <SuccessDialog success_open={success_open} setSuccessOpen={setSuccessOpen} />
     </Page>
   );
 };
