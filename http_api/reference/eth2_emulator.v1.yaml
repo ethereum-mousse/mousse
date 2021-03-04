@@ -18,7 +18,7 @@ servers:
   - url: 'http://localhost:3030'
     description: ''
 paths:
-  '/shard/{shard}/bid':
+  '/shards/{shard}/bid':
     parameters: []
     post:
       summary: Publish Bid
@@ -40,7 +40,7 @@ paths:
         Assume the receiving node broadcast to the corresponding shard.
       tags:
         - Shards
-  '/shard/{shard}/bid_with_data':
+  '/shards/{shard}/bid_with_data':
     parameters: []
     post:
       summary: Publish Bid With Data
