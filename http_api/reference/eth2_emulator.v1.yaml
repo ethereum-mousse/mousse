@@ -33,7 +33,7 @@ paths:
           description: OK
         '404':
           description: Not Found
-      operationId: publishBid
+      operationId: post-shards-bid
       requestBody:
         content:
           application/json:
@@ -61,7 +61,7 @@ paths:
           description: OK
         '404':
           description: Not Found
-      operationId: publishBid
+      operationId: post-shards-bid_with_data
       requestBody:
         content:
           application/json:
@@ -88,7 +88,7 @@ paths:
                 properties: {}
         '404':
           description: Not Found
-      operationId: config
+      operationId: get-config
       requestBody:
         content:
           application/json:
@@ -112,7 +112,7 @@ paths:
                 properties: {}
         '404':
           description: Not Found
-      operationId: config
+      operationId: post-config
       requestBody:
         content:
           application/json:
