@@ -89,13 +89,6 @@ paths:
         '404':
           description: Not Found
       operationId: get-config
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Config'
-            examples: {}
-        description: ''
       description: |
         Config for auto mode.
       tags:
@@ -141,20 +134,18 @@ paths:
                   $ref: '#/components/schemas/BeaconBlock'
         '404':
           description: Not Found
-      operationId: getBeaconBlockById
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                count:
-                  type: integer
-                  default: 100
-                page:
-                  type: integer
-                  default: 0
+      operationId: get-beacon-blocks
       description: Get beacon blocks of beacon chain in the latest order.
+      parameters:
+        - schema:
+            type: integer
+            default: 100
+          in: query
+          name: count
+        - schema:
+            type: integer
+          in: query
+          name: page
   /beacon/finalized_blocks:
     parameters: []
     get:
