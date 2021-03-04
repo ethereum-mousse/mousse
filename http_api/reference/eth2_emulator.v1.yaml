@@ -18,8 +18,14 @@ servers:
   - url: 'http://localhost:3030'
     description: ''
 paths:
-  '/shard/{shard}/bid':
-    parameters: []
+  '/shards/{shard}/bid':
+    parameters:
+      - schema:
+          type: integer
+        name: shard
+        in: path
+        required: true
+        description: Shard number
     post:
       summary: Publish Bid
       responses:
@@ -27,7 +33,7 @@ paths:
           description: OK
         '404':
           description: Not Found
-      operationId: publishBid
+      operationId: post-shards-bid
       requestBody:
         content:
           application/json:
@@ -40,8 +46,14 @@ paths:
         Assume the receiving node broadcast to the corresponding shard.
       tags:
         - Shards
-  '/shard/{shard}/bid_with_data':
-    parameters: []
+  '/shards/{shard}/bid_with_data':
+    parameters:
+      - schema:
+          type: integer
+        name: shard
+        in: path
+        required: true
+        description: Shard number
     post:
       summary: Publish Bid With Data
       responses:
@@ -49,7 +61,7 @@ paths:
           description: OK
         '404':
           description: Not Found
-      operationId: publishBid
+      operationId: post-shards-bid_with_data
       requestBody:
         content:
           application/json:
@@ -76,14 +88,7 @@ paths:
                 properties: {}
         '404':
           description: Not Found
-      operationId: config
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Config'
-            examples: {}
-        description: ''
+      operationId: get-config
       description: |
         Config for auto mode.
       tags:
@@ -100,7 +105,7 @@ paths:
                 properties: {}
         '404':
           description: Not Found
-      operationId: config
+      operationId: post-config
       requestBody:
         content:
           application/json:
@@ -129,20 +134,18 @@ paths:
                   $ref: '#/components/schemas/BeaconBlock'
         '404':
           description: Not Found
-      operationId: getBeaconBlockById
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                count:
-                  type: integer
-                  default: 100
-                page:
-                  type: integer
-                  default: 0
+      operationId: get-beacon-blocks
       description: Get beacon blocks of beacon chain in the latest order.
+      parameters:
+        - schema:
+            type: integer
+            default: 100
+          in: query
+          name: count
+        - schema:
+            type: integer
+          in: query
+          name: page
   /beacon/finalized_blocks:
     parameters: []
     get:
@@ -161,19 +164,17 @@ paths:
         '404':
           description: Not Found
       operationId: get-beacon-finalized_blocks-block_id
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                count:
-                  type: integer
-                  default: 100
-                page:
-                  type: integer
-                  default: 0
       description: Get finalized beacon blocks of beacon chain in the latest order.
+      parameters:
+        - schema:
+            type: integer
+            default: 100
+          in: query
+          name: count
+        - schema:
+            type: integer
+          in: query
+          name: page
   /beacon/finalized_checkpoint:
     get:
       summary: Get Finalized Checkpoint
@@ -386,19 +387,17 @@ paths:
         '404':
           description: Not Found
       operationId: get-beacon-states
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                count:
-                  type: integer
-                  default: 100
-                page:
-                  type: integer
-                  default: 0
       description: Get beacon states of beacon chain in the latest order.
+      parameters:
+        - schema:
+            type: integer
+            default: 100
+          in: query
+          name: count
+        - schema:
+            type: integer
+          in: query
+          name: page
   /beacon/blocks/head:
     get:
       summary: Get Head of Beacon Chain
