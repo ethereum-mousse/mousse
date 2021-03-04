@@ -7,7 +7,7 @@ import {
 import Page from 'src/components/Page';
 import SlotProcessor from './SlotProcessor';
 import Bid from './Bid';
-import SuccessDialog from './SuccessDialog';
+import SuccessDialog from 'src/components/SuccessDialog';
 import { CurrentSlotContext } from 'src/contexts/CurrentSlotContext';
 
 const useStyles = makeStyles((theme) => ({
